@@ -52,24 +52,24 @@
         }
 
         @keyframes customPulse {
-            0% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.6); transform: scale(1); }
-            50% { box-shadow: 0 0 0 20px rgba(244, 63, 94, 0); transform: scale(1.05); }
+            0% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.7); transform: scale(1); }
+            50% { box-shadow: 0 0 0 22px rgba(244, 63, 94, 0); transform: scale(1.08); }
             100% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0); transform: scale(1); }
         }
         .mic-recording {
-            animation: customPulse 1.5s infinite;
+            animation: customPulse 1.2s infinite;
         }
     </style>
 </head>
 <body>
 
-    <!-- 음성 및 사운드 활성화 가이드 모달 (Chrome / Mobile Autoplay 이슈 대응) -->
+    <!-- 음성 및 사운드 활성화 가이드 모달 -->
     <div id="audio-init-modal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm hidden">
         <div class="bg-white rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl border-4 border-yellow-300 transform transition-all">
             <div class="text-6xl mb-3 animate-bounce">🐤🎵</div>
             <h3 class="text-xl font-black text-yellow-900 mb-2">삐약 파닉스 소리 켜기</h3>
             <p class="text-sm text-yellow-700 font-bold mb-6 leading-relaxed">
-                반가워요! 신나고 재미있는 발음 공부를 위해 아래 버튼을 누르면 소리가 활성화됩니다.
+                반가워요! 신나고 재미있는 발음 공부를 위해 아래 버튼을 누르면 소리와 마이크가 활성화됩니다.
             </p>
             <button onclick="unlockAudio()" class="w-full py-3.5 bg-yellow-400 hover:bg-yellow-500 text-yellow-950 font-black text-lg rounded-2xl shadow-lg active:scale-95 transition-all">
                 소리 켜고 시작하기 🔊
@@ -91,11 +91,11 @@
             <div class="bg-amber-50 p-4 rounded-2xl border border-amber-200 text-xs font-semibold text-slate-700 space-y-3 mb-5">
                 <div class="flex items-start gap-2">
                     <span class="bg-amber-400 text-white rounded-full w-5 h-5 flex items-center justify-center shrink-0 font-bold">1</span>
-                    <div><strong>Chrome / Whale 브라우저:</strong><br/>상단 주소창 왼쪽의 <strong>[자물쇠🔒]</strong> 또는 <strong>[설정⚙️]</strong> 아이콘 클릭 ➔ <strong>'마이크 권한'</strong>을 <strong>[허용]</strong>으로 변경해 주세요.</div>
+                    <div><strong>Chrome / Whale / Safari 브라우저:</strong><br/>상단 주소창의 <strong>[자물쇠🔒]</strong> 또는 <strong>[설정⚙️]</strong> 아이콘 클릭 ➔ <strong>'마이크 권한'</strong>을 <strong>[허용]</strong>으로 변경해 주세요.</div>
                 </div>
                 <div class="flex items-start gap-2">
                     <span class="bg-amber-400 text-white rounded-full w-5 h-5 flex items-center justify-center shrink-0 font-bold">2</span>
-                    <div><strong>스마트폰 / 태블릿 (iOS/Android):</strong><br/>휴대폰 [설정] ➔ [애플리케이션(또나 Safari/Chrome)] ➔ [권한] ➔ [마이크 허용] 후 뒤로가기를 눌러주세요.</div>
+                    <div><strong>스마트폰 / 태블릿 (iOS/Android):</strong><br/>휴대폰 [설정] ➔ [애플리케이션/Safari/Chrome] ➔ [권한] ➔ [마이크 허용]을 설정해주세요.</div>
                 </div>
             </div>
             <button onclick="closeMicPermModal(); startRecording();" class="w-full py-3 bg-rose-500 hover:bg-rose-600 text-white font-black text-base rounded-2xl shadow-md active:scale-95 transition-all text-center">
@@ -104,7 +104,7 @@
         </div>
     </div>
 
-    <!-- 발음 분석 결과 모달 (정확도 % 띄우기) -->
+    <!-- 발음 분석 결과 모달 (90% 판정) -->
     <div id="accuracy-result-modal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm hidden">
         <div class="bg-white rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl border-4 border-yellow-300 relative transform transition-all">
             <div id="acc-emoji" class="text-6xl mb-2 animate-bounce">🌟</div>
@@ -123,7 +123,7 @@
             </div>
 
             <div class="flex gap-2">
-                <button onclick="retryCurrentWord()" class="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-all">
+                <button id="acc-retry-btn" onclick="retryCurrentWord()" class="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-all">
                     다시 하기 🔄
                 </button>
                 <button id="acc-next-btn" onclick="nextWordFromModal()" class="flex-1 py-3 bg-yellow-400 hover:bg-yellow-500 text-yellow-950 font-black rounded-xl transition-all shadow-md">
@@ -323,11 +323,11 @@
             </div>
             
             <div class="flex flex-col gap-2 pb-2 items-center shrink-0">
-                <button id="mic-btn" onclick="startRecording()" class="w-20 h-20 sm:w-24 sm:h-24 rounded-full flex items-center justify-center shadow-xl transition-all duration-300 border-4 border-white bg-yellow-400 hover:bg-yellow-500 active:scale-95">
+                <button id="mic-btn" onclick="toggleRecording()" class="w-20 h-20 sm:w-24 sm:h-24 rounded-full flex items-center justify-center shadow-xl transition-all duration-300 border-4 border-white bg-yellow-400 hover:bg-yellow-500 active:scale-95">
                     <svg id="mic-icon" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-yellow-950"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
                 </button>
                 <p id="mic-hint-text" class="text-yellow-800 text-xs sm:text-sm font-bold bg-white px-4 py-1.5 rounded-full shadow-sm">마이크를 누르고 말해봐요!</p>
-                <button onclick="mockSuccess()" class="mt-1 text-[10px] font-bold text-yellow-400 hover:text-yellow-600 bg-white px-2 py-0.5 rounded-full border border-yellow-100">(디버그) 100점 테스트 🪄</button>
+                <button onclick="mockSuccess()" class="mt-1 text-[10px] font-bold text-yellow-400 hover:text-yellow-600 bg-white px-2 py-0.5 rounded-full border border-yellow-100">(디버그) 95점 테스트 🪄</button>
             </div>
         </div>
 
@@ -522,7 +522,6 @@
         let audioUnlocked = false;
         let currentAccScore = 0;
 
-        // 브라우저 음성 재생 잠금 해제 (Chrome/Safari 대응)
         function checkAudioUnlock() {
             if (!audioUnlocked) {
                 document.getElementById('audio-init-modal').classList.remove('hidden');
@@ -540,7 +539,6 @@
             document.getElementById('audio-init-modal').classList.add('hidden');
         }
 
-        // 초기 시작 시 음성 엔진 활성화 유도
         window.addEventListener('DOMContentLoaded', () => {
             setTimeout(checkAudioUnlock, 500);
         });
@@ -574,10 +572,10 @@
             document.getElementById(viewId).classList.add('active');
             
             if(window.speechSynthesis) window.speechSynthesis.cancel();
-            if(recognition) { try{ recognition.abort(); }catch(e){} }
+            stopRecording();
         }
 
-        // --- [발음 정확도 산출 알고리즘] ---
+        // --- [발음 정확도 계산 (Levenshtein Distance + 음소 유사성)] ---
         function calculateAccuracy(spoken, target) {
             if (!spoken) return 0;
             const s = spoken.toLowerCase().replace(/[^a-z]/g, '').trim();
@@ -586,9 +584,7 @@
             if (s === t) return 100;
             if (s.includes(t) || t.includes(s)) return 92;
             
-            // Levenshtein distance 기반 계산
-            const track = Array(t.length + 1).fill(null).map(() =>
-                Array(s.length + 1).fill(null));
+            const track = Array(t.length + 1).fill(null).map(() => Array(s.length + 1).fill(null));
             for (let i = 0; i <= t.length; i += 1) track[i][0] = i;
             for (let j = 0; j <= s.length; j += 1) track[0][j] = j;
             for (let j = 1; j <= s.length; j += 1) {
@@ -606,7 +602,7 @@
             let score = Math.round(((maxLen - distance) / maxLen) * 100);
             
             if (s.charAt(0) === t.charAt(0) && score < 60) score = 65;
-            return Math.max(15, Math.min(98, score));
+            return Math.max(20, Math.min(98, score));
         }
 
         // --- [로그인] ---
@@ -842,6 +838,7 @@
         }
 
         function updatePracticeUI() {
+            stopRecording();
             const word = sessionWords[currentIndex];
             document.getElementById('practice-progress').textContent = `도전! ${currentIndex + 1} / ${sessionWords.length}`;
             document.getElementById('practice-letter').textContent = currentLetterData.letter;
@@ -882,77 +879,108 @@
             document.getElementById('mic-perm-modal').classList.add('hidden');
         }
 
-        // --- [녹음 및 음성 인식 로직] ---
+        // --- [음성인식 토글 및 핵심 제어 로직 (무한 녹음 버그 수정)] ---
+        function toggleRecording() {
+            if (isRecording) {
+                stopRecording();
+            } else {
+                startRecording();
+            }
+        }
+
         function startRecording() {
             const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
             if (!SpeechRec) {
                 openMicPermModal();
-                setFeedback('이 브라우저는 음성 인식을 지원하지 않거나 허용되지 않았습니다.', 'error');
+                setFeedback('이 브라우저는 음성 인식을 지원하지 않습니다. (Chrome 추천)', 'error');
                 return;
             }
 
-            if(recognition) { 
-                try { recognition.abort(); } catch(e){} 
-            }
-            
-            recognition = new SpeechRec();
-            recognition.lang = 'en-US';
-            recognition.interimResults = false;
-            recognition.maxAlternatives = 1;
+            // 기존 인식이 켜져 있다면 강제 중단 후 재설정
+            stopRecording();
 
-            recognition.onstart = () => {
-                isRecording = true;
-                const micBtn = document.getElementById('mic-btn');
-                micBtn.classList.add('bg-rose-500', 'mic-recording', 'scale-110');
-                micBtn.classList.remove('bg-yellow-400', 'hover:bg-yellow-500');
-                document.getElementById('mic-icon').classList.replace('text-yellow-950', 'text-white');
-                document.getElementById('mic-hint-text').textContent = "듣고 있어요! 영어로 말해주세요... 🎤";
-                setFeedback('듣고 있어요! 큰 소리로 말해보세요 🎤', 'info');
-            };
+            try {
+                recognition = new SpeechRec();
+                recognition.lang = 'en-US';
+                recognition.interimResults = false;
+                recognition.maxAlternatives = 1;
+                recognition.continuous = false; // 발음 후 자동 수신 완료 처리
 
-            recognition.onresult = (event) => {
-                const speechResult = event.results[0][0].transcript;
-                const targetWord = sessionWords[currentIndex].text;
-                const accuracy = calculateAccuracy(speechResult, targetWord);
-                
-                showAccuracyModal(speechResult, accuracy);
-            };
+                recognition.onstart = () => {
+                    isRecording = true;
+                    const micBtn = document.getElementById('mic-btn');
+                    micBtn.classList.add('bg-rose-500', 'mic-recording', 'scale-110');
+                    micBtn.classList.remove('bg-yellow-400', 'hover:bg-yellow-500');
+                    document.getElementById('mic-icon').classList.replace('text-yellow-950', 'text-white');
+                    document.getElementById('mic-hint-text').textContent = "듣고 있어요! 한 번 더 누르면 멈춰요 🎤";
+                    setFeedback('듣고 있어요! 큰 소리로 따라해봐요 🎤', 'info');
+                };
 
-            recognition.onerror = (e) => {
-                console.error("Mic error:", e);
-                resetMicBtnUI();
-                if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
-                    openMicPermModal();
-                    setFeedback('마이크 권한 허용이 필요합니다.', 'error');
-                } else if (e.error === 'no-speech') {
-                    setFeedback('목소리가 들리지 않았어요. 마이크를 누르고 다시 말해보세요! 🐥', 'error');
-                } else {
-                    setFeedback(`인식에 실패했어요 (${e.error}). 다시 눌러주세요.`, 'error');
-                }
-            };
+                recognition.onresult = (event) => {
+                    if (!event.results || !event.results[0]) return;
+                    const speechResult = event.results[0][0].transcript;
+                    const targetWord = sessionWords[currentIndex].text;
+                    const accuracy = calculateAccuracy(speechResult, targetWord);
+                    
+                    stopRecording();
+                    showAccuracyModal(speechResult, accuracy);
+                };
 
-            recognition.onend = () => {
-                isRecording = false;
-                resetMicBtnUI();
-            };
+                recognition.onerror = (e) => {
+                    console.error("Mic error:", e);
+                    stopRecording();
 
-            try { 
-                recognition.start(); 
-            } catch(e) { 
+                    if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+                        openMicPermModal();
+                        setFeedback('마이크 접근 권한이 차단되어 있습니다.', 'error');
+                    } else if (e.error === 'no-speech') {
+                        setFeedback('목소리가 들리지 않았어요. 마이크를 누르고 다시 말해보세요! 🐥', 'error');
+                    } else if (e.error === 'aborted') {
+                        // 사용자가 수동 취소한 경우 예외 무시
+                    } else {
+                        setFeedback(`음성 인식 오류 (${e.error}). 다시 눌러주세요.`, 'error');
+                    }
+                };
+
+                recognition.onend = () => {
+                    resetMicBtnUI();
+                };
+
+                recognition.start();
+            } catch (e) {
                 console.error("Mic Start Fail:", e);
+                stopRecording();
                 openMicPermModal();
             }
         }
 
+        function stopRecording() {
+            isRecording = false;
+            if (recognition) {
+                try {
+                    recognition.onstart = null;
+                    recognition.onresult = null;
+                    recognition.onerror = null;
+                    recognition.onend = null;
+                    recognition.stop();
+                    recognition.abort();
+                } catch(e) {}
+                recognition = null;
+            }
+            resetMicBtnUI();
+        }
+
         function resetMicBtnUI() {
+            isRecording = false;
             const micBtn = document.getElementById('mic-btn');
+            if (!micBtn) return;
             micBtn.classList.remove('bg-rose-500', 'mic-recording', 'scale-110');
             micBtn.classList.add('bg-yellow-400', 'hover:bg-yellow-500');
             document.getElementById('mic-icon').classList.replace('text-white', 'text-yellow-950');
             document.getElementById('mic-hint-text').textContent = "마이크를 누르고 말해봐요!";
         }
 
-        // --- [발음 결과 팝업창 모달] ---
+        // --- [발음 정확도 모달 팝업 & 90% 이상 조건 판정] ---
         function showAccuracyModal(spoken, accuracy) {
             currentAccScore = accuracy;
             document.getElementById('acc-spoken-text').textContent = `"${spoken}"`;
@@ -962,25 +990,30 @@
             const titleEl = document.getElementById('acc-title');
             const subEl = document.getElementById('acc-subtitle');
             const nextBtn = document.getElementById('acc-next-btn');
+            const retryBtn = document.getElementById('acc-retry-btn');
 
-            if (accuracy >= 85) {
+            // 정확도가 90% 이상인 경우에만 다음 단계로 이동 가능
+            if (accuracy >= 90) {
                 emojiEl.textContent = "🥳✨";
-                titleEl.textContent = "참 잘했어요!";
-                subEl.textContent = "정확도가 매우 뛰어납니다!";
+                titleEl.textContent = "완벽해요! 최고에요!";
+                subEl.textContent = "90% 이상 달성! 다음 단어로 넘어갈 수 있어요 🎉";
+                
+                nextBtn.disabled = false;
                 nextBtn.className = "flex-1 py-3 bg-orange-500 hover:bg-orange-600 text-white font-black rounded-xl transition-all shadow-md active:scale-95";
                 nextBtn.textContent = "다음 단어 👉";
-            } else if (accuracy >= 60) {
-                emojiEl.textContent = "🐣👍";
-                titleEl.textContent = "좋은 시도예요!";
-                subEl.textContent = "조금만 더 정교하게 발음해볼까요?";
-                nextBtn.className = "flex-1 py-3 bg-yellow-400 hover:bg-yellow-500 text-yellow-950 font-black rounded-xl transition-all shadow-md active:scale-95";
-                nextBtn.textContent = "통과하기 ➡️";
+                
+                retryBtn.className = "flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-all";
             } else {
-                emojiEl.textContent = "🐤💦";
-                titleEl.textContent = "다시 도전해봐요!";
-                subEl.textContent = "소리를 다시 듣고 따라해보세요!";
-                nextBtn.className = "flex-1 py-3 bg-yellow-400 hover:bg-yellow-500 text-yellow-950 font-black rounded-xl transition-all shadow-md active:scale-95";
-                nextBtn.textContent = "넘어가기 ➡️";
+                emojiEl.textContent = "🐣💦";
+                titleEl.textContent = "아쉬워요! 조금만 더!";
+                subEl.textContent = "정확도가 90%를 넘어야 다음 단어로 이동할 수 있어요!";
+                
+                // 90% 미만 시 다음 단어 버튼 비활성화 (다시 연습 유도)
+                nextBtn.disabled = true;
+                nextBtn.className = "flex-1 py-3 bg-slate-200 text-slate-400 font-black rounded-xl cursor-not-allowed opacity-60";
+                nextBtn.textContent = "90% 미달 (통과 불가)";
+                
+                retryBtn.className = "flex-1 py-3 bg-yellow-400 hover:bg-yellow-500 text-yellow-950 font-black rounded-xl transition-all shadow-md active:scale-95";
             }
 
             document.getElementById('accuracy-result-modal').classList.remove('hidden');
@@ -1004,15 +1037,18 @@
         }
 
         function mockSuccess() { 
-            showAccuracyModal(sessionWords[currentIndex].text, 100);
+            showAccuracyModal(sessionWords[currentIndex].text, 95);
         }
 
-        function exitPractice() { showPracticeSelector(); } 
+        function exitPractice() { 
+            stopRecording();
+            showPracticeSelector(); 
+        } 
 
         function finishSession() {
             const total = sessionScores.reduce((a, b) => a + b, 0);
             const avg = total / (sessionWords.length || 1);
-            const passed = avg >= 75;
+            const passed = avg >= 85;
 
             const newLog = { 
                 date: new Date().toLocaleDateString(), 
