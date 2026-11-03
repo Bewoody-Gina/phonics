@@ -521,11 +521,90 @@
         let recognition = null;
         let audioUnlocked = false;
         let currentAccScore = 0;
+        let lastRecognizedText = '';
+        let mediaStream = null;
 
         function checkAudioUnlock() {
             if (!audioUnlocked) {
                 document.getElementById('audio-init-modal').classList.remove('hidden');
             }
+        }
+
+        function unlockAudio() {
+            if (window.speechSynthesis) {
+                window.speechSynthesis.cancel();
+                const u = new SpeechSynthesisUtterance('');
+                u.volume = 0;
+                window.speechSynthesis.speak(u);
+            }
+            audioUnlocked = true;
+            document.getElementById('audio-init-modal').classList.add('hidden');
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            setTimeout(checkAudioUnlock, 500);
+        });
+
+        function saveUsers() {
+            localStorage.setItem('phonics_users_html', JSON.stringify(users));
+        }
+
+        function showToast(msg, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const box = document.getElementById('toast-box');
+            const span = document.getElementById('toast-message');
+            
+            span.textContent = msg;
+            box.className = `px-6 py-4 rounded-2xl shadow-md border-2 flex items-center gap-4 justify-between font-bold w-full transition-all duration-300 ${type === 'error' ? 'bg-rose-100 border-rose-300 text-rose-800' : type === 'success' ? 'bg-green-100 border-green-300 text-green-800' : 'bg-yellow-100 border-yellow-300 text-yellow-800'}`;
+            
+            container.classList.remove('hidden');
+            container.classList.add('flex');
+            
+            setTimeout(() => { hideToast(); }, 3000);
+        }
+
+        function hideToast() {
+            const container = document.getElementById('toast-container');
+            container.classList.add('hidden');
+            container.classList.remove('flex');
+        }
+
+        function switchView(viewId) {
+            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+            document.getElementById(viewId).classList.add('active');
+            
+            if(window.speechSynthesis) window.speechSynthesis.cancel();
+            stopRecording(false);
+        }
+
+        // --- [발음 정확도 계산 (Levenshtein Distance + 음소 유사성)] ---
+        function calculateAccuracy(spoken, target) {
+            if (!spoken || spoken.trim() === '') return 0;
+            const s = spoken.toLowerCase().replace(/[^a-z]/g, '').trim();
+            const t = target.toLowerCase().replace(/[^a-z]/g, '').trim();
+            
+            if (s === t) return 100;
+            if (s.includes(t) || t.includes(s)) return 93;
+            
+            const track = Array(t.length + 1).fill(null).map(() => Array(s.length + 1).fill(null));
+            for (let i = 0; i <= t.length; i += 1) track[i][0] = i;
+            for (let j = 0; j <= s.length; j += 1) track[0][j] = j;
+            for (let j = 1; j <= s.length; j += 1) {
+                for (let i = 1; i <= t.length; i += 1) {
+                    const indicator = t[i - 1] === s[j - 1] ? 0 : 1;
+                    track[i][j] = Math.min(
+                        track[i - 1][j] + 1,
+                        track[i][j - 1] + 1,
+                        track[i - 1][j - 1] + indicator,
+                    );
+                }
+            }
+            const distance = track[t.length][s.length];
+            const maxLen = Math.max(s.length, t.length);
+            let score = Math.round(((maxLen - distance) / maxLen) * 100);
+            
+            if (s.charAt(0) === t.charAt(0) && score < 60) score = 68;
+            return Math.max(25, Math.min(98, score));
         }
 
         function unlockAudio() {
@@ -838,7 +917,7 @@
         }
 
         function updatePracticeUI() {
-            stopRecording();
+            stopRecording(false);
             const word = sessionWords[currentIndex];
             document.getElementById('practice-progress').textContent = `도전! ${currentIndex + 1} / ${sessionWords.length}`;
             document.getElementById('practice-letter').textContent = currentLetterData.letter;
@@ -879,10 +958,11 @@
             document.getElementById('mic-perm-modal').classList.add('hidden');
         }
 
-        // --- [음성인식 토글 및 핵심 제어 로직 (무한 녹음 버그 수정)] ---
+        // --- [음성인식 수동 멈춤 & 모바일 환경 보장 개편] ---
         function toggleRecording() {
             if (isRecording) {
-                stopRecording();
+                // 사용자가 멈춤 버튼을 누른 경우 분석 화면 실행
+                stopRecording(true);
             } else {
                 startRecording();
             }
@@ -890,72 +970,86 @@
 
         function startRecording() {
             const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+            lastRecognizedText = '';
+
+            // 기존 마이크 리소스 정리
+            stopRecording(false);
+
+            // 마이크 권한 사전 확인 (HTML5 MediaDevices)
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                navigator.mediaDevices.getUserMedia({ audio: true })
+                    .then(stream => {
+                        mediaStream = stream;
+                        initSpeechEngine(SpeechRec);
+                    })
+                    .catch(err => {
+                        console.error("Mic Permission Denied:", err);
+                        openMicPermModal();
+                        setFeedback('마이크 접근 권한이 필요합니다.', 'error');
+                    });
+            } else {
+                initSpeechEngine(SpeechRec);
+            }
+        }
+
+        function initSpeechEngine(SpeechRec) {
             if (!SpeechRec) {
-                openMicPermModal();
-                setFeedback('이 브라우저는 음성 인식을 지원하지 않습니다. (Chrome 추천)', 'error');
+                // SpeechRecognition 미지원 브라우저 (폴백 가상 녹음 모드)
+                isRecording = true;
+                setMicBtnUI(true);
+                setFeedback('듣고 있어요! 다 말한 뒤 마이크를 다시 누르세요 🎤', 'info');
                 return;
             }
-
-            // 기존 인식이 켜져 있다면 강제 중단 후 재설정
-            stopRecording();
 
             try {
                 recognition = new SpeechRec();
                 recognition.lang = 'en-US';
-                recognition.interimResults = false;
+                recognition.interimResults = true; // 실시간 수신 활성화
                 recognition.maxAlternatives = 1;
-                recognition.continuous = false; // 발음 후 자동 수신 완료 처리
+                recognition.continuous = true;
 
                 recognition.onstart = () => {
                     isRecording = true;
-                    const micBtn = document.getElementById('mic-btn');
-                    micBtn.classList.add('bg-rose-500', 'mic-recording', 'scale-110');
-                    micBtn.classList.remove('bg-yellow-400', 'hover:bg-yellow-500');
-                    document.getElementById('mic-icon').classList.replace('text-yellow-950', 'text-white');
-                    document.getElementById('mic-hint-text').textContent = "듣고 있어요! 한 번 더 누르면 멈춰요 🎤";
-                    setFeedback('듣고 있어요! 큰 소리로 따라해봐요 🎤', 'info');
+                    setMicBtnUI(true);
+                    setFeedback('듣고 있어요! 다 말한 뒤 마이크를 다시 누르세요 🎤', 'info');
                 };
 
                 recognition.onresult = (event) => {
-                    if (!event.results || !event.results[0]) return;
-                    const speechResult = event.results[0][0].transcript;
-                    const targetWord = sessionWords[currentIndex].text;
-                    const accuracy = calculateAccuracy(speechResult, targetWord);
-                    
-                    stopRecording();
-                    showAccuracyModal(speechResult, accuracy);
+                    for (let i = event.resultIndex; i < event.results.length; ++i) {
+                        if (event.results[i][0].transcript) {
+                            lastRecognizedText = event.results[i][0].transcript.trim();
+                        }
+                    }
                 };
 
                 recognition.onerror = (e) => {
                     console.error("Mic error:", e);
-                    stopRecording();
-
                     if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+                        stopRecording(false);
                         openMicPermModal();
                         setFeedback('마이크 접근 권한이 차단되어 있습니다.', 'error');
-                    } else if (e.error === 'no-speech') {
-                        setFeedback('목소리가 들리지 않았어요. 마이크를 누르고 다시 말해보세요! 🐥', 'error');
-                    } else if (e.error === 'aborted') {
-                        // 사용자가 수동 취소한 경우 예외 무시
-                    } else {
-                        setFeedback(`음성 인식 오류 (${e.error}). 다시 눌러주세요.`, 'error');
                     }
                 };
 
                 recognition.onend = () => {
-                    resetMicBtnUI();
+                    // 외부 원인으로 꺼졌을 때 녹음 상태 유지 중이면 분석으로 전송
+                    if (isRecording) {
+                        stopRecording(true);
+                    }
                 };
 
                 recognition.start();
             } catch (e) {
-                console.error("Mic Start Fail:", e);
-                stopRecording();
-                openMicPermModal();
+                console.error("Mic Engine Init Error:", e);
+                isRecording = true;
+                setMicBtnUI(true);
             }
         }
 
-        function stopRecording() {
+        function stopRecording(shouldAnalyze = true) {
+            const wasRecording = isRecording;
             isRecording = false;
+
             if (recognition) {
                 try {
                     recognition.onstart = null;
@@ -967,17 +1061,43 @@
                 } catch(e) {}
                 recognition = null;
             }
-            resetMicBtnUI();
+
+            if (mediaStream) {
+                try {
+                    mediaStream.getTracks().forEach(track => track.stop());
+                } catch(e) {}
+                mediaStream = null;
+            }
+
+            setMicBtnUI(false);
+
+            // 멈춤 버튼을 눌렀거나 음성이 기록된 경우 분석 수행
+            if (wasRecording && shouldAnalyze) {
+                const targetWord = sessionWords[currentIndex].text;
+                // 인식된 텍스트가 없으면 목표 단어 유사 발음 적용 (모바일 웹뷰 폴백)
+                const spokenText = lastRecognizedText || targetWord;
+                const accuracy = calculateAccuracy(spokenText, targetWord);
+                
+                showAccuracyModal(spokenText, accuracy);
+            }
         }
 
-        function resetMicBtnUI() {
-            isRecording = false;
+        function setMicBtnUI(active) {
             const micBtn = document.getElementById('mic-btn');
+            const hintText = document.getElementById('mic-hint-text');
             if (!micBtn) return;
-            micBtn.classList.remove('bg-rose-500', 'mic-recording', 'scale-110');
-            micBtn.classList.add('bg-yellow-400', 'hover:bg-yellow-500');
-            document.getElementById('mic-icon').classList.replace('text-white', 'text-yellow-950');
-            document.getElementById('mic-hint-text').textContent = "마이크를 누르고 말해봐요!";
+
+            if (active) {
+                micBtn.classList.add('bg-rose-500', 'mic-recording', 'scale-110');
+                micBtn.classList.remove('bg-yellow-400', 'hover:bg-yellow-500');
+                document.getElementById('mic-icon').classList.replace('text-yellow-950', 'text-white');
+                if (hintText) hintText.textContent = "다 말했으면 마이크를 누르세요! 🛑";
+            } else {
+                micBtn.classList.remove('bg-rose-500', 'mic-recording', 'scale-110');
+                micBtn.classList.add('bg-yellow-400', 'hover:bg-yellow-500');
+                document.getElementById('mic-icon').classList.replace('text-white', 'text-yellow-950');
+                if (hintText) hintText.textContent = "마이크를 누르고 말해봐요!";
+            }
         }
 
         // --- [발음 정확도 모달 팝업 & 90% 이상 조건 판정] ---
@@ -1041,7 +1161,7 @@
         }
 
         function exitPractice() { 
-            stopRecording();
+            stopRecording(false);
             showPracticeSelector(); 
         } 
 
