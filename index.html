@@ -647,41 +647,41 @@
         }
 
         function switchView(viewId) {
-            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
-            document.getElementById(viewId).classList.add('active');
-            
-            if(window.speechSynthesis) window.speechSynthesis.cancel();
-            stopRecording();
-        }
-
-        // --- [발음 정확도 계산 (Levenshtein Distance + 음소 유사성)] ---
+        // --- [발음 정확도 계산 (Levenshtein Distance 기반 엄격한 판단)] ---
         function calculateAccuracy(spoken, target) {
-            if (!spoken) return 0;
+            if (!spoken || spoken.trim() === '') return 0;
+            
             const s = spoken.toLowerCase().replace(/[^a-z]/g, '').trim();
             const t = target.toLowerCase().replace(/[^a-z]/g, '').trim();
             
+            if (!s) return 0;
             if (s === t) return 100;
-            if (s.includes(t) || t.includes(s)) return 92;
             
+            // 편집 거리 (Levenshtein Distance) 계산
             const track = Array(t.length + 1).fill(null).map(() => Array(s.length + 1).fill(null));
             for (let i = 0; i <= t.length; i += 1) track[i][0] = i;
             for (let j = 0; j <= s.length; j += 1) track[0][j] = j;
+            
             for (let j = 1; j <= s.length; j += 1) {
                 for (let i = 1; i <= t.length; i += 1) {
                     const indicator = t[i - 1] === s[j - 1] ? 0 : 1;
                     track[i][j] = Math.min(
-                        track[i - 1][j] + 1,
-                        track[i][j - 1] + 1,
-                        track[i - 1][j - 1] + indicator,
+                        track[i - 1][j] + 1,        // 삭제
+                        track[i][j - 1] + 1,        // 삽입
+                        track[i - 1][j - 1] + indicator // 교체
                     );
                 }
             }
+            
             const distance = track[t.length][s.length];
             const maxLen = Math.max(s.length, t.length);
-            let score = Math.round(((maxLen - distance) / maxLen) * 100);
             
-            if (s.charAt(0) === t.charAt(0) && score < 60) score = 65;
-            return Math.max(20, Math.min(98, score));
+            if (maxLen === 0) return 0;
+            
+            // 실제 문자 일치 비율 계산
+            let accuracy = Math.round(((maxLen - distance) / maxLen) * 100);
+            
+            return Math.max(0, Math.min(100, accuracy));
         }
 
         // --- [로그인] ---
@@ -1074,8 +1074,9 @@
             // 멈춤 버튼을 눌렀거나 음성이 기록된 경우 분석 수행
             if (wasRecording && shouldAnalyze) {
                 const targetWord = sessionWords[currentIndex].text;
-                // 인식된 텍스트가 없으면 목표 단어 유사 발음 적용 (모바일 웹뷰 폴백)
-                const spokenText = lastRecognizedText || targetWord;
+                
+                // 실제 인식된 음성 텍스트 사용 (미인식 시 빈 문자열 처리 -> 0% 리턴)
+                const spokenText = lastRecognizedText ? lastRecognizedText : "(들리지 않음)";
                 const accuracy = calculateAccuracy(spokenText, targetWord);
                 
                 showAccuracyModal(spokenText, accuracy);
