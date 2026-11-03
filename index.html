@@ -59,6 +59,16 @@
         .mic-recording {
             animation: customPulse 1.2s infinite;
         }
+
+        /* 뱃지 획득 모달 애니메이션 */
+        @keyframes popIn {
+            0% { transform: scale(0.3) rotate(-15deg); opacity: 0; }
+            70% { transform: scale(1.1) rotate(5deg); opacity: 1; }
+            100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+        .badge-pop {
+            animation: popIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
     </style>
 </head>
 <body>
@@ -73,6 +83,30 @@
             </p>
             <button onclick="unlockAudio()" class="w-full py-3.5 bg-yellow-400 hover:bg-yellow-500 text-yellow-950 font-black text-lg rounded-2xl shadow-lg active:scale-95 transition-all">
                 소리 켜고 시작하기 🔊
+            </button>
+        </div>
+    </div>
+
+    <!-- 뱃지 획득 축하 모달 -->
+    <div id="badge-award-modal" class="fixed inset-0 bg-black/75 z-[110] flex items-center justify-center p-4 backdrop-blur-md hidden">
+        <div class="bg-white rounded-3xl p-6 sm:p-8 max-w-sm w-full text-center shadow-2xl border-4 border-orange-400 relative overflow-hidden">
+            <div class="absolute -top-10 -left-10 text-7xl opacity-20 animate-spin" style="animation-duration: 15s;">⭐</div>
+            <div class="absolute -bottom-10 -right-10 text-7xl opacity-20 animate-spin" style="animation-duration: 15s;">🎉</div>
+            
+            <div class="text-xs font-black text-orange-500 bg-orange-100 px-4 py-1.5 rounded-full inline-block mb-3 shadow-sm">
+                🎉 모든 위치 마스터! 🎉
+            </div>
+            
+            <h3 class="text-2xl font-black text-yellow-900 mb-2">뱃지 획득 축하해!</h3>
+            <p class="text-xs font-bold text-yellow-700 mb-6">처음, 중간, 끝 위치를 모두 완벽하게 통과했어요!</p>
+            
+            <div class="w-28 h-28 mx-auto bg-gradient-to-tr from-amber-100 to-yellow-300 rounded-full flex items-center justify-center border-4 border-yellow-400 shadow-xl mb-6 badge-pop relative">
+                <span id="badge-award-letter" class="text-6xl font-black text-orange-600 drop-shadow-md">A</span>
+                <span class="absolute -top-2 -right-2 text-3xl">🏅</span>
+            </div>
+
+            <button onclick="closeBadgeModal()" class="w-full py-4 bg-orange-500 hover:bg-orange-600 text-white font-black text-lg rounded-2xl shadow-lg active:scale-95 transition-all">
+                신난다! 확인 🐣
             </button>
         </div>
     </div>
@@ -217,16 +251,16 @@
                 </button>
             </div>
             
-            <div class="bg-yellow-50 p-6 rounded-[2rem] border-4 border-yellow-100 mb-8 relative overflow-hidden shrink-0">
+            <div class="bg-yellow-50 p-5 sm:p-6 rounded-[2rem] border-4 border-yellow-100 mb-6 relative overflow-hidden shrink-0">
                 <div class="absolute -right-4 -bottom-4 text-7xl opacity-20">🐥</div>
-                <div class="flex justify-between items-end mb-5 relative z-10">
+                <div class="flex justify-between items-end mb-4 relative z-10">
                     <div>
-                        <p class="text-sm text-yellow-700 font-bold mb-1">모은 뱃지 개수</p>
+                        <p class="text-xs sm:text-sm text-yellow-700 font-bold mb-1">모은 뱃지 개수 (처음/중간/끝 모두 완수 시 획득)</p>
                         <div class="text-3xl font-black text-orange-500">
                             <span id="badge-count">0</span> <span class="text-lg text-yellow-500 font-bold">/ 26</span>
                         </div>
                     </div>
-                    <div id="badge-percent" class="text-white font-black text-sm sm:text-base bg-orange-400 px-3 py-1.5 rounded-full shadow-sm">0% 달성!</div>
+                    <div id="badge-percent" class="text-white font-black text-xs sm:text-sm bg-orange-400 px-3 py-1.5 rounded-full shadow-sm">0% 달성!</div>
                 </div>
                 <div class="w-full bg-white border-2 border-yellow-200 rounded-full h-4 relative z-10 p-0.5">
                     <div id="badge-progress-bar" class="bg-yellow-400 h-full rounded-full transition-all duration-1000 ease-out" style="width: 0%"></div>
@@ -234,8 +268,8 @@
             </div>
             
             <div class="flex-1 overflow-y-auto pr-1">
-                <h3 class="text-base font-bold text-yellow-700 mb-4 bg-yellow-50 inline-block px-4 py-1.5 rounded-full">✨ 내가 획득한 글자들 ✨</h3>
-                <div id="badge-grid" class="grid grid-cols-4 sm:grid-cols-5 gap-3 mt-2 pb-4">
+                <h3 class="text-sm sm:text-base font-bold text-yellow-700 mb-3 bg-yellow-50 inline-block px-4 py-1.5 rounded-full">✨ 알파벳별 위치 완성 현황 ✨</h3>
+                <div id="badge-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-2 pb-6">
                     <!-- JS 동적 생성 -->
                 </div>
             </div>
@@ -362,9 +396,9 @@
 
         <!-- 축하 파티클 오버레이 -->
         <div id="confetti-container" class="fixed inset-0 pointer-events-none z-[100] flex flex-col items-center justify-center overflow-hidden bg-yellow-50/90 backdrop-blur-sm transition-all duration-500 hidden opacity-0">
-            <div class="text-8xl md:text-9xl mb-6 animate-bounce-slow">🐥✨</div>
-            <div class="animate-pulse text-4xl md:text-5xl text-orange-500 font-black tracking-wide drop-shadow-md">
-                삐약삐약! 완벽해!
+            <div class="text-8xl md:text-9xl mb-4 animate-bounce-slow">🐥✨🎉</div>
+            <div class="animate-pulse text-3xl md:text-5xl text-orange-500 font-black tracking-wide drop-shadow-md text-center px-4">
+                삐약삐약! 최고에요!<br/><span class="text-xl md:text-3xl text-yellow-600 font-bold mt-2 inline-block">5개 단어 모두 완벽 통과! 🎵</span>
             </div>
         </div>
 
@@ -539,7 +573,6 @@
 
         function unlockAudio() {
             try {
-                // Mobile AudioContext 언락
                 const AudioCtx = window.AudioContext || window.webkitAudioContext;
                 if (AudioCtx) {
                     audioContext = new AudioCtx();
@@ -558,12 +591,74 @@
             document.getElementById('audio-init-modal').classList.add('hidden');
         }
 
+        // --- [Web Audio API로 신나는 5개 단어 통과 축하 노래 생성] ---
+        function playCelebrationSong() {
+            try {
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                if (!audioContext) audioContext = new AudioCtx();
+                if (audioContext.state === 'suspended') audioContext.resume();
+
+                // 밝고 신나는 팡파레 & 멜로디 계이름 (C5~C6)
+                const notes = [
+                    { note: 523.25, duration: 0.15 }, // C5
+                    { note: 659.25, duration: 0.15 }, // E5
+                    { note: 783.99, duration: 0.15 }, // G5
+                    { note: 1046.50, duration: 0.3 }, // C6
+                    { note: 783.99, duration: 0.15 }, // G5
+                    { note: 1046.50, duration: 0.5 }  // C6
+                ];
+
+                let now = audioContext.currentTime + 0.05;
+                notes.forEach((item) => {
+                    const osc = audioContext.createOscillator();
+                    const gain = audioContext.createGain();
+                    
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(item.note, now);
+                    
+                    gain.gain.setValueAtTime(0.3, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + item.duration);
+                    
+                    osc.connect(gain);
+                    gain.connect(audioContext.destination);
+                    
+                    osc.start(now);
+                    osc.stop(now + item.duration);
+                    
+                    now += item.duration + 0.05;
+                });
+            } catch(e) {
+                console.log("Audio song error:", e);
+            }
+        }
+
+        // --- [개별 단어 통과 축하 음성 TTS] ---
+        function playPassVoice() {
+            if (!window.speechSynthesis) return;
+            window.speechSynthesis.cancel();
+            
+            const praises = ["Wonderful!", "Great job!", "Awesome!", "Perfect!", "Excellent!"];
+            const randomPraise = praises[Math.floor(Math.random() * praises.length)];
+            
+            const u = new SpeechSynthesisUtterance(randomPraise);
+            u.lang = 'en-US';
+            u.rate = 0.9;
+            u.pitch = 1.3;
+            window.speechSynthesis.speak(u);
+        }
+
         window.addEventListener('DOMContentLoaded', () => {
             setTimeout(checkAudioUnlock, 300);
         });
 
         function saveUsers() {
             localStorage.setItem('phonics_users_html', JSON.stringify(users));
+        }
+
+        function getUserProgress(user, letter) {
+            if (!user.completedPositions) user.completedPositions = {};
+            if (!user.completedPositions[letter]) user.completedPositions[letter] = [];
+            return user.completedPositions[letter];
         }
 
         function showToast(msg, type = 'info') {
@@ -605,7 +700,6 @@
             if (s === t) return 100;
             if (s.includes(t) || t.includes(s)) return 93;
 
-            // 편집 거리 (Levenshtein Distance)
             const track = Array(t.length + 1).fill(null).map(() => Array(s.length + 1).fill(null));
             for (let i = 0; i <= t.length; i += 1) track[i][0] = i;
             for (let j = 0; j <= s.length; j += 1) track[0][j] = j;
@@ -683,12 +777,13 @@
             if (users[idVal]) {
                 if (users[idVal].password === pwVal) {
                     currentUser = users[idVal];
+                    if (!currentUser.completedPositions) currentUser.completedPositions = {};
                     showPracticeSelector();
                 } else {
                     showToast('비밀번호가 일치하지 않습니다.', 'error');
                 }
             } else {
-                users[idVal] = { id: idVal, name: nameVal, password: pwVal, role: 'student', badges: [], logs: [] };
+                users[idVal] = { id: idVal, name: nameVal, password: pwVal, role: 'student', badges: [], logs: [], completedPositions: {} };
                 saveUsers();
                 currentUser = users[idVal];
                 showToast('계정이 생성되었습니다. 환영합니다! 🐣', 'success');
@@ -728,11 +823,16 @@
             grid.innerHTML = '';
             
             PHONICS_DATA[type].forEach(item => {
+                const hasBadge = currentUser && currentUser.badges.includes(item.letter);
+                const comp = currentUser ? getUserProgress(currentUser, item.letter) : [];
+                
                 const div = document.createElement('div');
-                div.className = "w-full flex flex-col items-center justify-center aspect-square min-h-[110px] sm:min-h-[130px] border-2 border-yellow-100 rounded-[1.5rem] p-2 sm:p-4 text-center cursor-pointer hover:border-orange-400 hover:bg-yellow-50 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 bg-white group relative overflow-hidden active:scale-95";
+                div.className = `w-full flex flex-col items-center justify-center aspect-square min-h-[110px] sm:min-h-[130px] border-2 rounded-[1.5rem] p-2 sm:p-4 text-center cursor-pointer hover:border-orange-400 hover:bg-yellow-50 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 bg-white group relative overflow-hidden active:scale-95 ${hasBadge ? 'border-orange-300 bg-orange-50/30' : 'border-yellow-100'}`;
+                
                 div.innerHTML = `
+                    ${hasBadge ? '<div class="absolute top-1.5 right-1.5 text-base sm:text-xl">🏅</div>' : ''}
                     <div class="text-4xl sm:text-5xl font-black text-yellow-500 mb-1 group-hover:text-orange-500 transition-colors drop-shadow-sm leading-none">${item.letter}</div>
-                    <div class="text-[10px] sm:text-[11px] text-yellow-700 font-bold bg-yellow-100 rounded-full py-0.5 px-2 whitespace-nowrap">단어 ${item.words.length}개</div>
+                    <div class="text-[9px] sm:text-[10px] text-yellow-700 font-bold bg-yellow-100 rounded-full py-0.5 px-2 whitespace-nowrap">완성 ${comp.length}/3</div>
                 `;
                 div.onclick = () => showPositionSelector(item);
                 grid.appendChild(div);
@@ -751,11 +851,29 @@
 
             const grid = document.getElementById('badge-grid');
             grid.innerHTML = '';
+            
             ALL_LETTERS.forEach(letter => {
                 const hasBadge = currentUser.badges.includes(letter);
+                const completed = getUserProgress(currentUser, letter);
+                
                 const div = document.createElement('div');
-                div.className = `aspect-square rounded-2xl flex items-center justify-center text-2xl font-black transition-all duration-300 border-4 ${hasBadge ? 'bg-orange-100 border-orange-400 text-orange-600 shadow-md scale-105 transform rotate-3' : 'bg-slate-50 border-slate-100 text-slate-300 opacity-50'}`;
-                div.textContent = letter;
+                div.className = `p-3 rounded-2xl flex flex-col items-center justify-center transition-all duration-300 border-4 relative overflow-hidden ${hasBadge ? 'bg-orange-100 border-orange-400 shadow-md scale-105' : 'bg-slate-50 border-slate-200'}`;
+                
+                let posBadgesHtml = `
+                    <div class="flex gap-1 mt-1.5 text-[10px] font-bold">
+                        <span class="${completed.includes('처음') ? 'text-orange-600 font-black' : 'text-slate-300'}">처음</span>
+                        <span class="text-slate-300">•</span>
+                        <span class="${completed.includes('중간') ? 'text-orange-600 font-black' : 'text-slate-300'}">중간</span>
+                        <span class="text-slate-300">•</span>
+                        <span class="${completed.includes('끝') ? 'text-orange-600 font-black' : 'text-slate-300'}">끝</span>
+                    </div>
+                `;
+
+                div.innerHTML = `
+                    ${hasBadge ? '<span class="absolute top-1 right-1 text-xs">🏅</span>' : ''}
+                    <div class="text-3xl font-black ${hasBadge ? 'text-orange-600' : 'text-slate-400'}">${letter}</div>
+                    ${posBadgesHtml}
+                `;
                 grid.appendChild(div);
             });
             switchView('view-mypage');
@@ -772,12 +890,17 @@
 
             const positions = ['처음', '중간', '끝'];
             const labels = ['🏁 처음에 올 때', '🔄 중간에 올 때', '🎯 끝에 올 때'];
+            const userComp = getUserProgress(currentUser, data.letter);
 
             positions.forEach((pos, idx) => {
                 if (data.words.some(w => w.position === pos)) {
+                    const isDone = userComp.includes(pos);
                     const btn = document.createElement('button');
-                    btn.className = "w-full py-3.5 px-6 bg-white border-4 border-yellow-200 text-yellow-800 font-bold text-base sm:text-lg rounded-2xl hover:bg-orange-100 hover:border-orange-400 hover:text-orange-600 transition-all shadow-sm flex items-center justify-between group active:scale-95";
-                    btn.innerHTML = `<span>${labels[idx]}</span><span>👉</span>`;
+                    btn.className = `w-full py-3.5 px-6 border-4 text-yellow-800 font-bold text-base sm:text-lg rounded-2xl hover:border-orange-400 transition-all shadow-sm flex items-center justify-between group active:scale-95 ${isDone ? 'bg-orange-50 border-orange-300 text-orange-700' : 'bg-white border-yellow-200'}`;
+                    btn.innerHTML = `
+                        <span class="flex items-center gap-2">${labels[idx]} ${isDone ? '✅' : ''}</span>
+                        <span>👉</span>
+                    `;
                     btn.onclick = () => {
                         currentTargetPosition = pos;
                         sessionWords = data.words.filter(w => w.position === pos);
@@ -1075,6 +1198,9 @@
             const retryBtn = document.getElementById('acc-retry-btn');
 
             if (accuracy >= 90) {
+                // 단어 통과 축하 음성 재생
+                playPassVoice();
+
                 emojiEl.textContent = "🥳✨";
                 titleEl.textContent = "완벽해요! 최고에요!";
                 subEl.textContent = "90% 이상 달성! 다음 단어로 넘어갈 수 있어요 🎉";
@@ -1121,34 +1247,72 @@
             showPracticeSelector(); 
         } 
 
+        function closeBadgeModal() {
+            document.getElementById('badge-award-modal').classList.add('hidden');
+            showPracticeSelector();
+        }
+
         function finishSession() {
             const total = sessionScores.reduce((a, b) => a + b, 0);
             const avg = total / (sessionWords.length || 1);
             const passed = avg >= 85;
 
+            const letter = currentLetterData.letter;
+            const pos = currentTargetPosition;
+
             const newLog = { 
                 date: new Date().toLocaleDateString(), 
-                letter: currentLetterData.letter, 
-                position: currentTargetPosition, 
+                letter: letter, 
+                position: pos, 
                 score: Math.round(avg), 
                 passed 
             };
             currentUser.logs.unshift(newLog);
 
-            if (passed && !currentUser.badges.includes(currentLetterData.letter)) {
-                currentUser.badges.push(currentLetterData.letter);
+            let newlyAwardedBadge = false;
+
+            if (passed) {
+                if (!currentUser.completedPositions) currentUser.completedPositions = {};
+                if (!currentUser.completedPositions[letter]) currentUser.completedPositions[letter] = [];
+                
+                if (!currentUser.completedPositions[letter].includes(pos)) {
+                    currentUser.completedPositions[letter].push(pos);
+                }
+
+                // 해당 글자의 존재하는 위치 리스트 추출 (예: B의 경우 처음, 중간, 끝)
+                const availablePositions = Array.from(new Set(currentLetterData.words.map(w => w.position)));
+                const userCompleted = currentUser.completedPositions[letter];
+
+                // 위치(처음, 중간, 끝)를 모두 마스터했는지 검증
+                const isAllPositionsDone = availablePositions.every(p => userCompleted.includes(p));
+
+                if (isAllPositionsDone && !currentUser.badges.includes(letter)) {
+                    currentUser.badges.push(letter);
+                    newlyAwardedBadge = true;
+                }
             }
+
             users[currentUser.id] = currentUser;
             saveUsers();
 
             if (passed) {
+                // 5개 단어 전체 완수 축하 노래 재생 및 파티클 띄우기
+                playCelebrationSong();
                 const conf = document.getElementById('confetti-container');
                 conf.classList.remove('hidden', 'opacity-0');
                 conf.classList.add('opacity-100');
+
                 setTimeout(() => {
                     conf.classList.add('hidden', 'opacity-0');
                     conf.classList.remove('opacity-100');
-                    showPracticeSelector();
+
+                    if (newlyAwardedBadge) {
+                        // 뱃지 획득 팝업 띄우기
+                        document.getElementById('badge-award-letter').textContent = letter;
+                        document.getElementById('badge-award-modal').classList.remove('hidden');
+                    } else {
+                        showPracticeSelector();
+                    }
                 }, 2800);
             } else {
                 showToast(`연습 완료! 평균 점수: ${Math.round(avg)}점! 다음에 다시 도전해봐요 🐥`, 'info');
