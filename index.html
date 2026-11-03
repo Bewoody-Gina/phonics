@@ -577,16 +577,18 @@
             stopRecording(false);
         }
 
-        // --- [발음 정확도 정밀 계산 (Levenshtein Distance + 0% 예외 엄격 처리)] ---
+        // --- [발음 정확도 정밀 계산 (실제 유효 발음 및 유사성 반영)] ---
         function calculateAccuracy(spoken, target) {
             if (!spoken || spoken.trim() === '' || spoken === '(들리지 않음)') return 0;
             
+            // 알파벳 이외 문자 제거 및 소문자 변환
             const s = spoken.toLowerCase().replace(/[^a-z]/g, '').trim();
             const t = target.toLowerCase().replace(/[^a-z]/g, '').trim();
             
             if (!s || s.length === 0) return 0;
             if (s === t) return 100;
-            
+            if (s.includes(t) || t.includes(s)) return 92; // 단어가 포함되는 경우 합격 기준 충족
+
             // 편집 거리 (Levenshtein Distance) 알고리즘
             const track = Array(t.length + 1).fill(null).map(() => Array(s.length + 1).fill(null));
             for (let i = 0; i <= t.length; i += 1) track[i][0] = i;
@@ -608,9 +610,14 @@
             
             if (maxLen === 0) return 0;
             
-            // 실제 문자 일치 비율 계산
+            // 일치 비율 계산 (0 ~ 100%)
             let accuracy = Math.round(((maxLen - distance) / maxLen) * 100);
             
+            // 철자 첫 글자가 일치하면 최소 가산점 부여
+            if (s.charAt(0) === t.charAt(0) && accuracy < 40) {
+                accuracy = Math.min(50, accuracy + 20);
+            }
+
             return Math.max(0, Math.min(100, accuracy));
         }
 
@@ -941,10 +948,14 @@
                 };
 
                 recognition.onresult = (event) => {
+                    let currentTranscript = '';
                     for (let i = event.resultIndex; i < event.results.length; ++i) {
                         if (event.results[i][0].transcript) {
-                            lastRecognizedText = event.results[i][0].transcript.trim();
+                            currentTranscript += event.results[i][0].transcript;
                         }
+                    }
+                    if (currentTranscript.trim() !== '') {
+                        lastRecognizedText = currentTranscript.trim();
                     }
                 };
 
