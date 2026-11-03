@@ -2,26 +2,27 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>삐약 파닉스</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Noto+Sans+KR:wght@400;500;700;900&display=swap');
         
-        /* 전체 화면을 앱처럼 고정 (스크롤 원천 차단) */
         html, body {
             margin: 0;
             padding: 0;
             height: 100%;
+            height: 100dvh;
             overflow: hidden;
             font-family: 'Nunito', 'Noto Sans KR', sans-serif;
             -webkit-tap-highlight-color: transparent;
-            background-color: #fffbeb; /* bg-amber-50 */
+            background-color: #fffbeb;
+            touch-action: manipulation;
         }
 
-        /* 앱 컨테이너 */
         .app-container {
             height: 100%;
+            height: 100dvh;
             max-width: 48rem;
             margin: 0 auto;
             background-color: white;
@@ -30,12 +31,10 @@
             position: relative;
         }
 
-        /* 내부 스크롤바 커스텀 */
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #FCD34D; border-radius: 10px; }
 
-        /* 각각의 독립된 페이지 (평소엔 완벽히 숨김) */
         .view-section { 
             display: none !important; 
             flex: 1;
@@ -43,7 +42,7 @@
             flex-direction: column;
             padding-bottom: 2rem;
         }
-        /* 활성화된 페이지만 보임 */
+        
         .view-section.active { 
             display: flex !important; 
         }
@@ -53,9 +52,9 @@
         }
 
         @keyframes customPulse {
-            0% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.4); }
-            70% { box-shadow: 0 0 0 15px rgba(244, 63, 94, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0); }
+            0% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.6); transform: scale(1); }
+            50% { box-shadow: 0 0 0 20px rgba(244, 63, 94, 0); transform: scale(1.05); }
+            100% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0); transform: scale(1); }
         }
         .mic-recording {
             animation: customPulse 1.5s infinite;
@@ -63,6 +62,76 @@
     </style>
 </head>
 <body>
+
+    <!-- 음성 및 사운드 활성화 가이드 모달 (Chrome / Mobile Autoplay 이슈 대응) -->
+    <div id="audio-init-modal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm hidden">
+        <div class="bg-white rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl border-4 border-yellow-300 transform transition-all">
+            <div class="text-6xl mb-3 animate-bounce">🐤🎵</div>
+            <h3 class="text-xl font-black text-yellow-900 mb-2">삐약 파닉스 소리 켜기</h3>
+            <p class="text-sm text-yellow-700 font-bold mb-6 leading-relaxed">
+                반가워요! 신나고 재미있는 발음 공부를 위해 아래 버튼을 누르면 소리가 활성화됩니다.
+            </p>
+            <button onclick="unlockAudio()" class="w-full py-3.5 bg-yellow-400 hover:bg-yellow-500 text-yellow-950 font-black text-lg rounded-2xl shadow-lg active:scale-95 transition-all">
+                소리 켜고 시작하기 🔊
+            </button>
+        </div>
+    </div>
+
+    <!-- 마이크 권한 설정 안내 모달 -->
+    <div id="mic-perm-modal" class="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 backdrop-blur-sm hidden">
+        <div class="bg-white rounded-3xl p-6 max-w-md w-full text-left shadow-2xl border-4 border-rose-300 relative">
+            <button onclick="closeMicPermModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-2xl font-bold">&times;</button>
+            <div class="flex items-center gap-3 mb-4">
+                <span class="text-4xl">🎙️</span>
+                <h3 class="text-xl font-black text-rose-600">마이크 권한이 필요해요!</h3>
+            </div>
+            <p class="text-sm text-slate-700 mb-4 font-bold leading-relaxed">
+                학생의 목소리를 듣고 정확도를 평가하려면 브라우저에서 마이크 접근을 허용해 주셔야 합니다.
+            </p>
+            <div class="bg-amber-50 p-4 rounded-2xl border border-amber-200 text-xs font-semibold text-slate-700 space-y-3 mb-5">
+                <div class="flex items-start gap-2">
+                    <span class="bg-amber-400 text-white rounded-full w-5 h-5 flex items-center justify-center shrink-0 font-bold">1</span>
+                    <div><strong>Chrome / Whale 브라우저:</strong><br/>상단 주소창 왼쪽의 <strong>[자물쇠🔒]</strong> 또는 <strong>[설정⚙️]</strong> 아이콘 클릭 ➔ <strong>'마이크 권한'</strong>을 <strong>[허용]</strong>으로 변경해 주세요.</div>
+                </div>
+                <div class="flex items-start gap-2">
+                    <span class="bg-amber-400 text-white rounded-full w-5 h-5 flex items-center justify-center shrink-0 font-bold">2</span>
+                    <div><strong>스마트폰 / 태블릿 (iOS/Android):</strong><br/>휴대폰 [설정] ➔ [애플리케이션(또나 Safari/Chrome)] ➔ [권한] ➔ [마이크 허용] 후 뒤로가기를 눌러주세요.</div>
+                </div>
+            </div>
+            <button onclick="closeMicPermModal(); startRecording();" class="w-full py-3 bg-rose-500 hover:bg-rose-600 text-white font-black text-base rounded-2xl shadow-md active:scale-95 transition-all text-center">
+                설정했어요! 다시 시도하기 🚀
+            </button>
+        </div>
+    </div>
+
+    <!-- 발음 분석 결과 모달 (정확도 % 띄우기) -->
+    <div id="accuracy-result-modal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm hidden">
+        <div class="bg-white rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl border-4 border-yellow-300 relative transform transition-all">
+            <div id="acc-emoji" class="text-6xl mb-2 animate-bounce">🌟</div>
+            <h3 id="acc-title" class="text-2xl font-black text-yellow-900 mb-1">발음 분석 완료!</h3>
+            <p id="acc-subtitle" class="text-xs font-bold text-yellow-600 mb-4">삐약이가 잘 들었어요 🐥</p>
+            
+            <div class="bg-yellow-50 rounded-2xl p-4 border-2 border-yellow-200 mb-5">
+                <div class="text-xs font-bold text-slate-500 mb-1">내가 말한 발음</div>
+                <div id="acc-spoken-text" class="text-lg font-black text-slate-800 mb-3">"Apple"</div>
+                
+                <div class="text-xs font-bold text-slate-500 mb-1">발음 정확도</div>
+                <div class="flex items-baseline justify-center gap-1">
+                    <span id="acc-percent" class="text-5xl font-black text-orange-500">95</span>
+                    <span class="text-2xl font-black text-orange-400">%</span>
+                </div>
+            </div>
+
+            <div class="flex gap-2">
+                <button onclick="retryCurrentWord()" class="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-all">
+                    다시 하기 🔄
+                </button>
+                <button id="acc-next-btn" onclick="nextWordFromModal()" class="flex-1 py-3 bg-yellow-400 hover:bg-yellow-500 text-yellow-950 font-black rounded-xl transition-all shadow-md">
+                    다음 단어 👉
+                </button>
+            </div>
+        </div>
+    </div>
 
     <!-- 토스트 메시지 컨테이너 -->
     <div id="toast-container" class="fixed top-6 left-1/2 transform -translate-x-1/2 z-50 flex-col gap-2 hidden w-11/12 max-w-md transition-all duration-300">
@@ -76,33 +145,33 @@
     <div class="app-container shadow-2xl border-x-4 border-yellow-100">
         
         <!-- 1. 로그인 페이지 -->
-        <div id="view-login" class="view-section active p-8 md:p-12 justify-center relative bg-white h-full">
+        <div id="view-login" class="view-section active p-6 sm:p-12 justify-center relative bg-white h-full">
             <div class="absolute top-10 left-10 text-4xl opacity-20 transform -rotate-12">🐤</div>
             <div class="absolute bottom-20 right-10 text-5xl opacity-20 transform rotate-12">🐣</div>
 
-            <div class="text-center mb-10 relative z-10 mt-auto">
-                <h1 class="text-4xl md:text-5xl font-black text-orange-500 mb-4 flex items-center justify-center gap-3 tracking-tight">
+            <div class="text-center mb-8 relative z-10 mt-auto">
+                <h1 class="text-4xl sm:text-5xl font-black text-orange-500 mb-4 flex items-center justify-center gap-3 tracking-tight">
                     <span class="animate-bounce">🐥</span> 삐약 파닉스
                 </h1>
-                <p class="text-yellow-700 font-medium text-base md:text-lg bg-yellow-100 inline-block px-4 py-1.5 rounded-full">
+                <p class="text-yellow-700 font-medium text-sm sm:text-lg bg-yellow-100 inline-block px-4 py-1.5 rounded-full">
                     귀여운 병아리와 함께 영어 발음 연습!
                 </p>
             </div>
 
-            <div class="flex bg-yellow-50 p-1.5 rounded-2xl mb-8 border-2 border-yellow-100 max-w-sm mx-auto w-full relative z-10">
+            <div class="flex bg-yellow-50 p-1.5 rounded-2xl mb-6 border-2 border-yellow-100 max-w-sm mx-auto w-full relative z-10">
                 <button id="tab-student" onclick="switchLoginTab('student')" class="flex-1 py-3 rounded-xl text-sm font-bold transition-all duration-300 bg-white text-orange-500 shadow-sm border border-yellow-200 scale-105">학생 (Student)</button>
                 <button id="tab-teacher" onclick="switchLoginTab('teacher')" class="flex-1 py-3 rounded-xl text-sm font-bold transition-all duration-300 text-yellow-600 hover:text-orange-500">선생님 (Teacher)</button>
             </div>
 
-            <form id="login-form" onsubmit="handleLogin(event)" class="space-y-4 max-w-sm mx-auto w-full relative z-10 mb-auto">
-                <div id="student-inputs" class="space-y-4">
-                    <input type="text" id="login-id" placeholder="학번 (예: 20401)" class="w-full p-4 bg-yellow-50/50 border-2 border-yellow-200 rounded-2xl text-base font-medium focus:outline-none focus:border-orange-400 focus:bg-white transition-all placeholder-yellow-400" />
-                    <input type="text" id="login-name" placeholder="이름 (예: 홍길동)" class="w-full p-4 bg-yellow-50/50 border-2 border-yellow-200 rounded-2xl text-base font-medium focus:outline-none focus:border-orange-400 focus:bg-white transition-all placeholder-yellow-400" />
+            <form id="login-form" onsubmit="handleLogin(event)" class="space-y-3.5 max-w-sm mx-auto w-full relative z-10 mb-auto">
+                <div id="student-inputs" class="space-y-3.5">
+                    <input type="text" id="login-id" placeholder="학번 (예: 20401)" class="w-full p-3.5 bg-yellow-50/50 border-2 border-yellow-200 rounded-2xl text-base font-medium focus:outline-none focus:border-orange-400 focus:bg-white transition-all placeholder-yellow-400" />
+                    <input type="text" id="login-name" placeholder="이름 (예: 홍길동)" class="w-full p-3.5 bg-yellow-50/50 border-2 border-yellow-200 rounded-2xl text-base font-medium focus:outline-none focus:border-orange-400 focus:bg-white transition-all placeholder-yellow-400" />
                 </div>
-                <input type="password" id="login-pw" placeholder="비밀번호" class="w-full p-4 bg-yellow-50/50 border-2 border-yellow-200 rounded-2xl text-base font-medium focus:outline-none focus:border-orange-400 focus:bg-white transition-all placeholder-yellow-400" />
+                <input type="password" id="login-pw" placeholder="비밀번호" class="w-full p-3.5 bg-yellow-50/50 border-2 border-yellow-200 rounded-2xl text-base font-medium focus:outline-none focus:border-orange-400 focus:bg-white transition-all placeholder-yellow-400" />
                 
-                <div class="pt-4">
-                    <button type="submit" id="login-btn" class="w-full py-4 rounded-2xl font-bold text-lg bg-yellow-400 hover:bg-yellow-500 text-yellow-950 shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all">시작하기 🐣</button>
+                <div class="pt-2">
+                    <button type="submit" id="login-btn" class="w-full py-3.5 rounded-2xl font-bold text-lg bg-yellow-400 hover:bg-yellow-500 text-yellow-950 shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all">시작하기 🐣</button>
                 </div>
             </form>
         </div>
@@ -172,19 +241,19 @@
             </div>
         </div>
 
-        <!-- 4. 학습 위치 선택 (프로세스 진행 화면) -->
+        <!-- 4. 학습 위치 선택 -->
         <div id="view-position-selector" class="view-section p-6 h-full relative bg-yellow-50 items-center border-4 border-white rounded-[2rem] m-2 shadow-inner">
-            <div class="w-full flex justify-between shrink-0 mb-8">
+            <div class="w-full flex justify-between shrink-0 mb-6">
                 <div class="text-sm font-bold text-orange-400 bg-orange-100 px-4 py-1.5 rounded-full shadow-sm">학습 위치 선택 🐥</div>
                 <button onclick="showPracticeSelector()" class="text-sm font-bold text-yellow-600 bg-white px-4 py-1.5 rounded-full shadow-sm hover:bg-orange-100 transition-colors">뒤로가기</button>
             </div>
             
             <div class="text-center w-full max-w-sm mt-auto mb-auto">
-                <div id="pos-letter-title" class="text-[80px] leading-none font-black text-orange-500 mb-6 drop-shadow-lg animate-bounce-slow">A</div>
-                <h2 class="text-xl font-black text-yellow-800 mb-1">알파벳 <span id="pos-letter-span" class="text-orange-500">A</span>가</h2>
-                <h2 class="text-xl font-black text-yellow-800 mb-10">어디에 올 때 연습할까요? 🐣</h2>
+                <div id="pos-letter-title" class="text-[70px] sm:text-[80px] leading-none font-black text-orange-500 mb-4 drop-shadow-lg animate-bounce-slow">A</div>
+                <h2 class="text-lg sm:text-xl font-black text-yellow-800 mb-1">알파벳 <span id="pos-letter-span" class="text-orange-500">A</span>가</h2>
+                <h2 class="text-lg sm:text-xl font-black text-yellow-800 mb-8">어디에 올 때 연습할까요? 🐣</h2>
                 
-                <div id="position-buttons" class="flex flex-col gap-4 w-full">
+                <div id="position-buttons" class="flex flex-col gap-3.5 w-full">
                     <!-- JS 동적 생성 -->
                 </div>
             </div>
@@ -192,75 +261,73 @@
 
         <!-- 5. 미니 강의 (Intro) -->
         <div id="view-practice-intro" class="view-section p-6 h-full relative bg-yellow-50 items-center border-4 border-white rounded-[2rem] m-2 shadow-inner">
-            <div class="w-full flex justify-between shrink-0 mb-6">
+            <div class="w-full flex justify-between shrink-0 mb-4">
                 <div class="text-sm font-bold text-orange-400 bg-orange-100 px-4 py-1.5 rounded-full shadow-sm">미니 강의 🐥</div>
                 <button onclick="showPositionSelector(currentLetterData)" class="text-sm font-bold text-yellow-600 bg-white px-4 py-1.5 rounded-full shadow-sm hover:bg-orange-100 transition-colors">다시 선택</button>
             </div>
             
-            <div class="text-center w-full max-w-md mt-4 flex-1 flex flex-col">
-                <div id="intro-letter-title" class="text-[60px] leading-none font-black text-orange-500 mb-4 drop-shadow-lg animate-bounce-slow">A</div>
+            <div class="text-center w-full max-w-md mt-2 flex-1 flex flex-col">
+                <div id="intro-letter-title" class="text-[50px] leading-none font-black text-orange-500 mb-3 drop-shadow-lg animate-bounce-slow">A</div>
                 
-                <div class="bg-white p-4 sm:p-5 rounded-3xl border-4 border-yellow-200 shadow-lg mb-6 flex items-center justify-between relative w-full">
+                <div class="bg-white p-4 rounded-3xl border-4 border-yellow-200 shadow-lg mb-4 flex items-center justify-between relative w-full">
                     <div class="absolute -top-5 -left-3 text-3xl z-10">🐣</div>
-                    <p class="text-yellow-800 text-sm sm:text-base font-bold leading-snug text-left flex-1 pl-2">
+                    <p class="text-yellow-800 text-xs sm:text-sm font-bold leading-snug text-left flex-1 pl-2">
                         재생 버튼을 눌러서<br/><span class="text-orange-500">어떤 소리</span>가 나는지 들어요!
                     </p>
-                    <button onclick="playIntroSound()" class="w-14 h-14 bg-yellow-400 border-4 border-white rounded-full flex items-center justify-center hover:bg-yellow-500 transition-all text-white shadow-md shrink-0">
+                    <button onclick="playIntroSound()" class="w-12 h-12 sm:w-14 sm:h-14 bg-yellow-400 border-4 border-white rounded-full flex items-center justify-center hover:bg-yellow-500 transition-all text-white shadow-md shrink-0 active:scale-95">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                     </button>
                 </div>
                 
-                <div id="intro-words-grid" class="grid grid-cols-2 gap-3 mb-6 w-full text-center overflow-y-auto">
+                <div id="intro-words-grid" class="grid grid-cols-2 gap-2.5 mb-4 w-full text-center overflow-y-auto max-h-[42h]">
                     <!-- JS 동적 생성 -->
                 </div>
                 
-                <div class="mt-auto pt-4">
-                    <button onclick="startPracticeSession()" class="w-full py-4 text-lg bg-yellow-400 hover:bg-yellow-500 text-yellow-950 font-bold rounded-2xl shadow-md transition-all">연습 시작하기! 🐥</button>
+                <div class="mt-auto pt-2">
+                    <button onclick="startPracticeSession()" class="w-full py-3.5 text-lg bg-yellow-400 hover:bg-yellow-500 text-yellow-950 font-bold rounded-2xl shadow-md transition-all active:scale-95">연습 시작하기! 🐥</button>
                 </div>
             </div>
         </div>
 
         <!-- 6. 본 훈련 화면 -->
         <div id="view-practice-main" class="view-section p-6 h-full relative bg-yellow-50 flex flex-col justify-between border-4 border-white rounded-[2rem] m-2 shadow-inner">
-            <div class="flex justify-between items-center mb-4 shrink-0">
+            <div class="flex justify-between items-center mb-2 shrink-0">
                 <div id="practice-progress" class="bg-white px-4 py-1.5 rounded-full text-sm font-black text-orange-500 shadow-sm border-2 border-yellow-200">
                     도전! 1 / 5
                 </div>
                 <button onclick="exitPractice()" class="text-sm font-bold text-yellow-600 bg-white px-4 py-1.5 rounded-full shadow-sm hover:bg-orange-100 transition-colors">그만하기</button>
             </div>
             
-            <div class="text-center flex-1 flex flex-col justify-center max-w-sm mx-auto w-full">
-                <div class="text-xl mb-3 font-bold text-yellow-700">오늘의 알파벳 <span id="practice-letter" class="text-3xl font-black text-orange-500 ml-2">A</span></div>
+            <div class="text-center flex-1 flex flex-col justify-center max-w-sm mx-auto w-full my-auto">
+                <div class="text-lg mb-2 font-bold text-yellow-700">오늘의 알파벳 <span id="practice-letter" class="text-2xl font-black text-orange-500 ml-1">A</span></div>
                 
-                <div class="bg-white rounded-[2.5rem] p-6 shadow-lg border-4 border-yellow-200 mb-6 flex flex-col items-center justify-center relative overflow-hidden">
+                <div class="bg-white rounded-[2rem] p-5 shadow-lg border-4 border-yellow-200 mb-4 flex flex-col items-center justify-center relative overflow-hidden">
                     <div id="practice-pos-badge" class="absolute top-3 bg-orange-100 text-orange-600 px-3 py-1 rounded-full font-black text-[11px] shadow-sm border-2 border-orange-200 z-10"></div>
-                    <div class="absolute -bottom-4 -right-4 text-6xl opacity-10">🐥</div>
                     
-                    <div onclick="playCurrentWord()" class="w-28 h-28 mt-8 mb-2 flex items-center justify-center cursor-pointer rounded-full bg-yellow-50 hover:bg-yellow-100 transition-colors shadow-sm relative group" title="클릭해서 발음 듣기">
-                        <div id="practice-icon" class="text-6xl animate-bounce-slow transition-transform">🍎</div>
+                    <div onclick="playCurrentWord()" class="w-24 h-24 sm:w-28 sm:h-28 mt-6 mb-2 flex items-center justify-center cursor-pointer rounded-full bg-yellow-50 hover:bg-yellow-100 transition-colors shadow-sm relative active:scale-95" title="클릭해서 발음 듣기">
+                        <div id="practice-icon" class="text-5xl sm:text-6xl animate-bounce-slow">🍎</div>
                     </div>
                     
-                    <div onclick="playCurrentWord()" class="text-xs font-bold text-yellow-500 mb-3 bg-yellow-50 px-3 py-1.5 rounded-full border border-yellow-100 cursor-pointer">👆 눌러서 듣기</div>
+                    <div onclick="playCurrentWord()" class="text-xs font-bold text-yellow-600 mb-2 bg-yellow-50 px-3 py-1 rounded-full border border-yellow-100 cursor-pointer">👆 눌러서 듣기</div>
                     
                     <h2 id="practice-word" class="text-3xl sm:text-4xl font-black text-orange-500 tracking-tight capitalize drop-shadow-sm mb-1 break-words w-full">Apple</h2>
                     <div class="flex flex-col items-center gap-0.5 w-full">
-                        <span id="practice-phonetic" class="text-base text-yellow-600 font-medium">/ˈæp.əl/</span>
-                        <span id="practice-meaning" class="text-lg text-yellow-800 font-bold">사과</span>
+                        <span id="practice-phonetic" class="text-sm text-yellow-600 font-medium">/ˈæp.əl/</span>
+                        <span id="practice-meaning" class="text-base text-yellow-800 font-bold">사과</span>
                     </div>
                 </div>
                 
-                <!-- 피드백 영역 -->
-                <div class="h-12 flex items-center justify-center">
-                    <p id="practice-feedback" class="text-sm sm:text-base font-bold px-5 py-2.5 rounded-full shadow-md hidden"></p>
+                <div class="h-10 flex items-center justify-center">
+                    <p id="practice-feedback" class="text-xs sm:text-sm font-bold px-4 py-2 rounded-full shadow-md hidden"></p>
                 </div>
             </div>
             
-            <div class="flex flex-col gap-3 pb-2 items-center shrink-0">
-                <button id="mic-btn" onclick="startRecording()" class="w-20 h-20 sm:w-24 sm:h-24 rounded-full flex items-center justify-center shadow-xl transition-all duration-300 border-4 border-white bg-yellow-400 hover:bg-yellow-500 hover:scale-105">
-                    <svg id="mic-icon" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-yellow-950"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+            <div class="flex flex-col gap-2 pb-2 items-center shrink-0">
+                <button id="mic-btn" onclick="startRecording()" class="w-20 h-20 sm:w-24 sm:h-24 rounded-full flex items-center justify-center shadow-xl transition-all duration-300 border-4 border-white bg-yellow-400 hover:bg-yellow-500 active:scale-95">
+                    <svg id="mic-icon" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-yellow-950"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
                 </button>
-                <p class="text-yellow-700 text-sm font-bold bg-white px-4 py-1.5 rounded-full shadow-sm mt-1">마이크를 누르고 말해봐요!</p>
-                <button onclick="mockSuccess()" class="mt-2 text-[10px] font-bold text-yellow-400 hover:text-yellow-600 bg-white px-2 py-1 rounded-full border border-yellow-100">(디버그) 정답 처리 🪄</button>
+                <p id="mic-hint-text" class="text-yellow-800 text-xs sm:text-sm font-bold bg-white px-4 py-1.5 rounded-full shadow-sm">마이크를 누르고 말해봐요!</p>
+                <button onclick="mockSuccess()" class="mt-1 text-[10px] font-bold text-yellow-400 hover:text-yellow-600 bg-white px-2 py-0.5 rounded-full border border-yellow-100">(디버그) 100점 테스트 🪄</button>
             </div>
         </div>
 
@@ -305,7 +372,7 @@
     </div>
 
     <script>
-        // --- [데이터 모음 (자음 데이터 5개씩 대폭 확장)] ---
+        // --- [데이터 모음] ---
         const PHONICS_DATA = {
             vowels: [
                 { letter: 'A', words: [
@@ -452,9 +519,32 @@
         let sessionScores = [];
         let isRecording = false;
         let recognition = null;
-        let activeIntroWordIndex = -1;
+        let audioUnlocked = false;
+        let currentAccScore = 0;
 
-        // --- [유틸리티] ---
+        // 브라우저 음성 재생 잠금 해제 (Chrome/Safari 대응)
+        function checkAudioUnlock() {
+            if (!audioUnlocked) {
+                document.getElementById('audio-init-modal').classList.remove('hidden');
+            }
+        }
+
+        function unlockAudio() {
+            if (window.speechSynthesis) {
+                window.speechSynthesis.cancel();
+                const u = new SpeechSynthesisUtterance('');
+                u.volume = 0;
+                window.speechSynthesis.speak(u);
+            }
+            audioUnlocked = true;
+            document.getElementById('audio-init-modal').classList.add('hidden');
+        }
+
+        // 초기 시작 시 음성 엔진 활성화 유도
+        window.addEventListener('DOMContentLoaded', () => {
+            setTimeout(checkAudioUnlock, 500);
+        });
+
         function saveUsers() {
             localStorage.setItem('phonics_users_html', JSON.stringify(users));
         }
@@ -479,37 +569,44 @@
             container.classList.remove('flex');
         }
 
-        // 라우팅 (페이지 전환 및 하단 메뉴 제어)
         function switchView(viewId) {
-            // 모든 뷰 숨김 처리
             document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
-            // 특정 뷰만 표시
             document.getElementById(viewId).classList.add('active');
             
-            // 기존 소리 및 마이크 초기화 (화면 넘어갈 때 충돌 방지)
             if(window.speechSynthesis) window.speechSynthesis.cancel();
             if(recognition) { try{ recognition.abort(); }catch(e){} }
         }
 
-        // --- [발음 정확도 로직] ---
+        // --- [발음 정확도 산출 알고리즘] ---
         function calculateAccuracy(spoken, target) {
             if (!spoken) return 0;
-            const s = spoken.toLowerCase().replace(/[^a-z]/g, '');
-            const t = target.toLowerCase().replace(/[^a-z]/g, '');
+            const s = spoken.toLowerCase().replace(/[^a-z]/g, '').trim();
+            const t = target.toLowerCase().replace(/[^a-z]/g, '').trim();
             
             if (s === t) return 100;
-            if (s.includes(t)) return 95;
+            if (s.includes(t) || t.includes(s)) return 92;
             
-            let matchCount = 0;
-            const minLen = Math.min(s.length, t.length);
-            const maxLen = Math.max(s.length, t.length);
-            
-            for(let i=0; i<minLen; i++) {
-                if(s[i] === t[i]) matchCount++;
+            // Levenshtein distance 기반 계산
+            const track = Array(t.length + 1).fill(null).map(() =>
+                Array(s.length + 1).fill(null));
+            for (let i = 0; i <= t.length; i += 1) track[i][0] = i;
+            for (let j = 0; j <= s.length; j += 1) track[0][j] = j;
+            for (let j = 1; j <= s.length; j += 1) {
+                for (let i = 1; i <= t.length; i += 1) {
+                    const indicator = t[i - 1] === s[j - 1] ? 0 : 1;
+                    track[i][j] = Math.min(
+                        track[i - 1][j] + 1,
+                        track[i][j - 1] + 1,
+                        track[i - 1][j - 1] + indicator,
+                    );
+                }
             }
-            let baseAcc = Math.floor((matchCount / maxLen) * 100);
-            if (s.charAt(0) === t.charAt(0) && baseAcc < 50) baseAcc = 50;
-            return baseAcc === 0 ? 10 : baseAcc;
+            const distance = track[t.length][s.length];
+            const maxLen = Math.max(s.length, t.length);
+            let score = Math.round(((maxLen - distance) / maxLen) * 100);
+            
+            if (s.charAt(0) === t.charAt(0) && score < 60) score = 65;
+            return Math.max(15, Math.min(98, score));
         }
 
         // --- [로그인] ---
@@ -579,12 +676,12 @@
             switchView('view-login');
         }
 
-        // --- [페이지: 파닉스 선택 (홈)] ---
+        // --- [페이지: 파닉스 선택] ---
         function showPracticeSelector() {
             if(currentUser) {
                 document.getElementById('practice-username').textContent = currentUser.name + " 학생";
             }
-            renderPhonicsGrid(currentPhonicsType); // 기존 선택 탭 유지
+            renderPhonicsGrid(currentPhonicsType);
             switchView('view-practice-selector');
         }
 
@@ -594,11 +691,11 @@
             const btnC = document.getElementById('tab-consonants');
             
             if(type === 'vowels') {
-                btnV.className = "flex-1 py-2 sm:py-3 rounded-xl text-sm sm:text-base font-black transition-all duration-300 bg-white text-orange-500 shadow-md scale-105 border-2 border-yellow-200";
-                btnC.className = "flex-1 py-2 sm:py-3 rounded-xl text-sm sm:text-base font-black transition-all duration-300 text-yellow-600 hover:bg-yellow-100";
+                btnV.className = "flex-1 py-2.5 sm:py-3 rounded-xl text-sm sm:text-base font-black transition-all duration-300 bg-white text-orange-500 shadow-md scale-105 border-2 border-yellow-200";
+                btnC.className = "flex-1 py-2.5 sm:py-3 rounded-xl text-sm sm:text-base font-black transition-all duration-300 text-yellow-600 hover:bg-yellow-100";
             } else {
-                btnC.className = "flex-1 py-2 sm:py-3 rounded-xl text-sm sm:text-base font-black transition-all duration-300 bg-white text-orange-500 shadow-md scale-105 border-2 border-yellow-200";
-                btnV.className = "flex-1 py-2 sm:py-3 rounded-xl text-sm sm:text-base font-black transition-all duration-300 text-yellow-600 hover:bg-yellow-100";
+                btnC.className = "flex-1 py-2.5 sm:py-3 rounded-xl text-sm sm:text-base font-black transition-all duration-300 bg-white text-orange-500 shadow-md scale-105 border-2 border-yellow-200";
+                btnV.className = "flex-1 py-2.5 sm:py-3 rounded-xl text-sm sm:text-base font-black transition-all duration-300 text-yellow-600 hover:bg-yellow-100";
             }
 
             const grid = document.getElementById('phonics-grid');
@@ -606,11 +703,10 @@
             
             PHONICS_DATA[type].forEach(item => {
                 const div = document.createElement('div');
-                div.className = "w-full flex flex-col items-center justify-center aspect-square min-h-[120px] sm:min-h-[140px] border-2 border-yellow-100 rounded-[1.5rem] p-2 sm:p-4 text-center cursor-pointer hover:border-orange-400 hover:bg-yellow-50 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 bg-white group relative overflow-hidden";
+                div.className = "w-full flex flex-col items-center justify-center aspect-square min-h-[110px] sm:min-h-[130px] border-2 border-yellow-100 rounded-[1.5rem] p-2 sm:p-4 text-center cursor-pointer hover:border-orange-400 hover:bg-yellow-50 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 bg-white group relative overflow-hidden active:scale-95";
                 div.innerHTML = `
-                    <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity text-xs hidden sm:block">✨</div>
-                    <div class="text-4xl sm:text-5xl font-black text-yellow-500 mb-2 group-hover:text-orange-500 transition-colors drop-shadow-sm leading-none">${item.letter}</div>
-                    <div class="text-[10px] sm:text-[11px] text-yellow-700 font-bold bg-yellow-100 rounded-full py-1 px-2 whitespace-nowrap">단어 ${item.words.length}개</div>
+                    <div class="text-4xl sm:text-5xl font-black text-yellow-500 mb-1 group-hover:text-orange-500 transition-colors drop-shadow-sm leading-none">${item.letter}</div>
+                    <div class="text-[10px] sm:text-[11px] text-yellow-700 font-bold bg-yellow-100 rounded-full py-0.5 px-2 whitespace-nowrap">단어 ${item.words.length}개</div>
                 `;
                 div.onclick = () => showPositionSelector(item);
                 grid.appendChild(div);
@@ -639,7 +735,7 @@
             switchView('view-mypage');
         }
 
-        // --- [프로세스: 학습 위치 선택] ---
+        // --- [학습 위치 선택] ---
         function showPositionSelector(data) {
             currentLetterData = data;
             document.getElementById('pos-letter-title').textContent = data.letter;
@@ -654,8 +750,8 @@
             positions.forEach((pos, idx) => {
                 if (data.words.some(w => w.position === pos)) {
                     const btn = document.createElement('button');
-                    btn.className = "w-full py-4 px-6 bg-white border-4 border-yellow-200 text-yellow-800 font-bold text-lg rounded-2xl hover:bg-orange-100 hover:border-orange-400 hover:text-orange-600 hover:-translate-y-1 transition-all shadow-sm flex items-center justify-between group";
-                    btn.innerHTML = `<span>${labels[idx]}</span><span class="opacity-0 group-hover:opacity-100 transition-opacity">👉</span>`;
+                    btn.className = "w-full py-3.5 px-6 bg-white border-4 border-yellow-200 text-yellow-800 font-bold text-base sm:text-lg rounded-2xl hover:bg-orange-100 hover:border-orange-400 hover:text-orange-600 transition-all shadow-sm flex items-center justify-between group active:scale-95";
+                    btn.innerHTML = `<span>${labels[idx]}</span><span>👉</span>`;
                     btn.onclick = () => {
                         currentTargetPosition = pos;
                         sessionWords = data.words.filter(w => w.position === pos);
@@ -667,7 +763,7 @@
             switchView('view-position-selector');
         }
 
-        // --- [프로세스: 미니 강의] ---
+        // --- [미니 강의] ---
         function showIntroScreen() {
             document.getElementById('intro-letter-title').textContent = currentLetterData.letter;
             const grid = document.getElementById('intro-words-grid');
@@ -676,14 +772,14 @@
             sessionWords.forEach((word, idx) => {
                 const div = document.createElement('div');
                 div.id = `intro-word-${idx}`;
-                div.className = "flex flex-col items-center justify-center p-3 rounded-2xl transition-all duration-300 border-4 w-full relative overflow-hidden bg-white border-yellow-100 shadow-sm";
+                div.className = "flex flex-col items-center justify-center p-2.5 rounded-2xl transition-all duration-300 border-4 w-full relative overflow-hidden bg-white border-yellow-100 shadow-sm";
                 div.innerHTML = `
-                    <div id="intro-badge-${idx}" class="text-[10px] font-black px-2 py-0.5 rounded-full mb-1.5 whitespace-nowrap bg-yellow-200 text-yellow-800">${word.position}에 올 때</div>
-                    <div id="intro-icon-${idx}" class="text-3xl flex items-center justify-center w-12 h-12 rounded-full mb-1.5 shrink-0 bg-yellow-50">${word.icon}</div>
+                    <div id="intro-badge-${idx}" class="text-[9px] font-black px-2 py-0.5 rounded-full mb-1 whitespace-nowrap bg-yellow-200 text-yellow-800">${word.position}에 올 때</div>
+                    <div id="intro-icon-${idx}" class="text-2xl sm:text-3xl flex items-center justify-center w-10 h-10 rounded-full mb-1 shrink-0 bg-yellow-50">${word.icon}</div>
                     <div class="flex flex-col items-center w-full min-w-0">
-                        <span id="intro-text-${idx}" class="text-base font-black truncate w-full text-yellow-700">${word.text}</span>
-                        <span class="text-xs text-yellow-800 font-bold truncate w-full mt-0.5">${word.meaning}</span>
-                        <span class="text-[10px] text-yellow-600 font-medium mt-0.5 truncate w-full">${word.phonetic}</span>
+                        <span id="intro-text-${idx}" class="text-sm font-black truncate w-full text-yellow-700">${word.text}</span>
+                        <span class="text-[11px] text-yellow-800 font-bold truncate w-full">${word.meaning}</span>
+                        <span class="text-[9px] text-yellow-600 font-medium truncate w-full">${word.phonetic}</span>
                     </div>
                 `;
                 grid.appendChild(div);
@@ -706,9 +802,9 @@
                     return;
                 }
                 const uWord = new SpeechSynthesisUtterance(sessionWords[idx].text);
-                uWord.lang = 'en-US'; uWord.rate = 0.55;
+                uWord.lang = 'en-US'; uWord.rate = 0.6;
                 uWord.onstart = () => updateIntroHighlight(idx);
-                uWord.onend = () => { setTimeout(() => playWordWithDelay(idx + 1), 1200); };
+                uWord.onend = () => { setTimeout(() => playWordWithDelay(idx + 1), 1100); };
                 window.speechSynthesis.speak(uWord);
             }
             window.speechSynthesis.speak(uIntro);
@@ -723,20 +819,20 @@
                 if (!card) return;
 
                 if (idx === activeIndex) {
-                    card.className = "flex flex-col items-center justify-center p-3 rounded-2xl transition-all duration-300 border-4 w-full relative overflow-hidden bg-orange-100 border-orange-400 scale-105 shadow-md z-10";
-                    badge.className = "text-[10px] font-black px-2 py-0.5 rounded-full mb-1.5 whitespace-nowrap bg-orange-400 text-white";
-                    icon.className = "text-3xl flex items-center justify-center w-12 h-12 rounded-full mb-1.5 shrink-0 bg-orange-200";
-                    text.className = "text-base font-black truncate w-full text-orange-600";
+                    card.className = "flex flex-col items-center justify-center p-2.5 rounded-2xl transition-all duration-300 border-4 w-full relative overflow-hidden bg-orange-100 border-orange-400 scale-105 shadow-md z-10";
+                    badge.className = "text-[9px] font-black px-2 py-0.5 rounded-full mb-1 whitespace-nowrap bg-orange-400 text-white";
+                    icon.className = "text-2xl sm:text-3xl flex items-center justify-center w-10 h-10 rounded-full mb-1 shrink-0 bg-orange-200";
+                    text.className = "text-sm font-black truncate w-full text-orange-600";
                 } else {
-                    card.className = "flex flex-col items-center justify-center p-3 rounded-2xl transition-all duration-300 border-4 w-full relative overflow-hidden bg-white border-yellow-100 shadow-sm";
-                    badge.className = "text-[10px] font-black px-2 py-0.5 rounded-full mb-1.5 whitespace-nowrap bg-yellow-200 text-yellow-800";
-                    icon.className = "text-3xl flex items-center justify-center w-12 h-12 rounded-full mb-1.5 shrink-0 bg-yellow-50";
-                    text.className = "text-base font-black truncate w-full text-yellow-700";
+                    card.className = "flex flex-col items-center justify-center p-2.5 rounded-2xl transition-all duration-300 border-4 w-full relative overflow-hidden bg-white border-yellow-100 shadow-sm";
+                    badge.className = "text-[9px] font-black px-2 py-0.5 rounded-full mb-1 whitespace-nowrap bg-yellow-200 text-yellow-800";
+                    icon.className = "text-2xl sm:text-3xl flex items-center justify-center w-10 h-10 rounded-full mb-1 shrink-0 bg-yellow-50";
+                    text.className = "text-sm font-black truncate w-full text-yellow-700";
                 }
             });
         }
 
-        // --- [프로세스: 본 훈련] ---
+        // --- [본 훈련] ---
         function startPracticeSession() {
             if(window.speechSynthesis) window.speechSynthesis.cancel();
             currentIndex = 0;
@@ -762,7 +858,7 @@
             if (window.speechSynthesis.speaking) window.speechSynthesis.cancel();
             setTimeout(() => {
                 const uWord = new SpeechSynthesisUtterance(sessionWords[currentIndex].text);
-                uWord.lang = 'en-US'; uWord.rate = 0.7;
+                uWord.lang = 'en-US'; uWord.rate = 0.65;
                 window.speechSynthesis.speak(uWord);
             }, 10);
         }
@@ -774,17 +870,30 @@
                 return;
             }
             el.textContent = msg;
-            el.className = `text-sm sm:text-base font-bold px-5 py-2.5 rounded-full shadow-md ${type === 'success' ? 'bg-orange-500 text-white' : 'bg-rose-400 text-white'}`;
+            el.className = `text-xs sm:text-sm font-bold px-4 py-2 rounded-full shadow-md ${type === 'success' ? 'bg-orange-500 text-white' : type === 'error' ? 'bg-rose-500 text-white' : 'bg-yellow-400 text-yellow-950'}`;
             el.classList.remove('hidden');
         }
 
+        function openMicPermModal() {
+            document.getElementById('mic-perm-modal').classList.remove('hidden');
+        }
+
+        function closeMicPermModal() {
+            document.getElementById('mic-perm-modal').classList.add('hidden');
+        }
+
+        // --- [녹음 및 음성 인식 로직] ---
         function startRecording() {
             const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
             if (!SpeechRec) {
-                setFeedback('마이크 지원 불가! 크롬이나 사파리를 사용해주세요.', 'error');
+                openMicPermModal();
+                setFeedback('이 브라우저는 음성 인식을 지원하지 않거나 허용되지 않았습니다.', 'error');
                 return;
             }
-            if(recognition) { try { recognition.abort(); } catch(e){} }
+
+            if(recognition) { 
+                try { recognition.abort(); } catch(e){} 
+            }
             
             recognition = new SpeechRec();
             recognition.lang = 'en-US';
@@ -793,10 +902,12 @@
 
             recognition.onstart = () => {
                 isRecording = true;
-                document.getElementById('mic-btn').classList.add('bg-rose-500', 'mic-recording', 'scale-110');
-                document.getElementById('mic-btn').classList.remove('bg-yellow-400', 'hover:bg-yellow-500');
+                const micBtn = document.getElementById('mic-btn');
+                micBtn.classList.add('bg-rose-500', 'mic-recording', 'scale-110');
+                micBtn.classList.remove('bg-yellow-400', 'hover:bg-yellow-500');
                 document.getElementById('mic-icon').classList.replace('text-yellow-950', 'text-white');
-                setFeedback('마이크 켜짐! 예쁘게 말해볼까요? 🎤', '');
+                document.getElementById('mic-hint-text').textContent = "듣고 있어요! 영어로 말해주세요... 🎤";
+                setFeedback('듣고 있어요! 큰 소리로 말해보세요 🎤', 'info');
             };
 
             recognition.onresult = (event) => {
@@ -804,60 +915,112 @@
                 const targetWord = sessionWords[currentIndex].text;
                 const accuracy = calculateAccuracy(speechResult, targetWord);
                 
-                if (accuracy >= 90) {
-                    setFeedback(`최고야! ("${speechResult}" - 정확도: ${accuracy}%) ✨`, 'success');
-                    handleScore(accuracy);
-                } else if (accuracy >= 50) {
-                    setFeedback(`조금만 더! ("${speechResult}" - 정확도: ${accuracy}%) 🐣`, 'error');
-                } else {
-                    setFeedback(`다시 한 번! ("${speechResult}" - 정확도: ${accuracy}%) 🐤`, 'error');
-                }
+                showAccuracyModal(speechResult, accuracy);
             };
 
             recognition.onerror = (e) => {
                 console.error("Mic error:", e);
-                if (e.error === 'not-allowed') setFeedback('마이크 차단됨! (주소창 🔒 자물쇠 확인)', 'error');
-                else if (e.error === 'no-speech') setFeedback('소리가 안 들려요. 다시 해볼까? 😢', 'error');
-                else setFeedback(`인식 오류(${e.error}). 다시 해볼까?`, 'error');
+                resetMicBtnUI();
+                if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+                    openMicPermModal();
+                    setFeedback('마이크 권한 허용이 필요합니다.', 'error');
+                } else if (e.error === 'no-speech') {
+                    setFeedback('목소리가 들리지 않았어요. 마이크를 누르고 다시 말해보세요! 🐥', 'error');
+                } else {
+                    setFeedback(`인식에 실패했어요 (${e.error}). 다시 눌러주세요.`, 'error');
+                }
             };
 
             recognition.onend = () => {
                 isRecording = false;
-                document.getElementById('mic-btn').classList.remove('bg-rose-500', 'mic-recording', 'scale-110');
-                document.getElementById('mic-btn').classList.add('bg-yellow-400', 'hover:bg-yellow-500');
-                document.getElementById('mic-icon').classList.replace('text-white', 'text-yellow-950');
+                resetMicBtnUI();
             };
 
-            try { recognition.start(); } catch(e) { console.error(e); }
+            try { 
+                recognition.start(); 
+            } catch(e) { 
+                console.error("Mic Start Fail:", e);
+                openMicPermModal();
+            }
         }
 
-        function handleScore(score) {
-            sessionScores[currentIndex] = score;
-            document.getElementById('mic-btn').disabled = true;
-            document.getElementById('mic-btn').classList.add('opacity-50');
-
-            setTimeout(() => {
-                document.getElementById('mic-btn').disabled = false;
-                document.getElementById('mic-btn').classList.remove('opacity-50');
-                
-                if (currentIndex < sessionWords.length - 1) {
-                    currentIndex++;
-                    updatePracticeUI();
-                } else {
-                    finishSession();
-                }
-            }, 1500);
+        function resetMicBtnUI() {
+            const micBtn = document.getElementById('mic-btn');
+            micBtn.classList.remove('bg-rose-500', 'mic-recording', 'scale-110');
+            micBtn.classList.add('bg-yellow-400', 'hover:bg-yellow-500');
+            document.getElementById('mic-icon').classList.replace('text-white', 'text-yellow-950');
+            document.getElementById('mic-hint-text').textContent = "마이크를 누르고 말해봐요!";
         }
 
-        function mockSuccess() { handleScore(100); }
+        // --- [발음 결과 팝업창 모달] ---
+        function showAccuracyModal(spoken, accuracy) {
+            currentAccScore = accuracy;
+            document.getElementById('acc-spoken-text').textContent = `"${spoken}"`;
+            document.getElementById('acc-percent').textContent = accuracy;
+            
+            const emojiEl = document.getElementById('acc-emoji');
+            const titleEl = document.getElementById('acc-title');
+            const subEl = document.getElementById('acc-subtitle');
+            const nextBtn = document.getElementById('acc-next-btn');
+
+            if (accuracy >= 85) {
+                emojiEl.textContent = "🥳✨";
+                titleEl.textContent = "참 잘했어요!";
+                subEl.textContent = "정확도가 매우 뛰어납니다!";
+                nextBtn.className = "flex-1 py-3 bg-orange-500 hover:bg-orange-600 text-white font-black rounded-xl transition-all shadow-md active:scale-95";
+                nextBtn.textContent = "다음 단어 👉";
+            } else if (accuracy >= 60) {
+                emojiEl.textContent = "🐣👍";
+                titleEl.textContent = "좋은 시도예요!";
+                subEl.textContent = "조금만 더 정교하게 발음해볼까요?";
+                nextBtn.className = "flex-1 py-3 bg-yellow-400 hover:bg-yellow-500 text-yellow-950 font-black rounded-xl transition-all shadow-md active:scale-95";
+                nextBtn.textContent = "통과하기 ➡️";
+            } else {
+                emojiEl.textContent = "🐤💦";
+                titleEl.textContent = "다시 도전해봐요!";
+                subEl.textContent = "소리를 다시 듣고 따라해보세요!";
+                nextBtn.className = "flex-1 py-3 bg-yellow-400 hover:bg-yellow-500 text-yellow-950 font-black rounded-xl transition-all shadow-md active:scale-95";
+                nextBtn.textContent = "넘어가기 ➡️";
+            }
+
+            document.getElementById('accuracy-result-modal').classList.remove('hidden');
+        }
+
+        function retryCurrentWord() {
+            document.getElementById('accuracy-result-modal').classList.add('hidden');
+            playCurrentWord();
+        }
+
+        function nextWordFromModal() {
+            document.getElementById('accuracy-result-modal').classList.add('hidden');
+            sessionScores[currentIndex] = currentAccScore;
+            
+            if (currentIndex < sessionWords.length - 1) {
+                currentIndex++;
+                updatePracticeUI();
+            } else {
+                finishSession();
+            }
+        }
+
+        function mockSuccess() { 
+            showAccuracyModal(sessionWords[currentIndex].text, 100);
+        }
+
         function exitPractice() { showPracticeSelector(); } 
 
         function finishSession() {
             const total = sessionScores.reduce((a, b) => a + b, 0);
-            const avg = total / sessionWords.length;
-            const passed = avg >= 90;
+            const avg = total / (sessionWords.length || 1);
+            const passed = avg >= 75;
 
-            const newLog = { date: new Date().toLocaleDateString(), letter: currentLetterData.letter, position: currentTargetPosition, score: Math.round(avg), passed };
+            const newLog = { 
+                date: new Date().toLocaleDateString(), 
+                letter: currentLetterData.letter, 
+                position: currentTargetPosition, 
+                score: Math.round(avg), 
+                passed 
+            };
             currentUser.logs.unshift(newLog);
 
             if (passed && !currentUser.badges.includes(currentLetterData.letter)) {
@@ -874,9 +1037,9 @@
                     conf.classList.add('hidden', 'opacity-0');
                     conf.classList.remove('opacity-100');
                     showPracticeSelector();
-                }, 3000);
+                }, 2800);
             } else {
-                showToast(`연습 끝! 내 점수는: ${Math.round(avg)}점! 다음에 다시 도전해볼까? 🐥`, 'info');
+                showToast(`연습 완료! 평균 점수: ${Math.round(avg)}점! 다음에 다시 도전해봐요 🐥`, 'info');
                 showPracticeSelector();
             }
         }
