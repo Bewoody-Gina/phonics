@@ -327,7 +327,6 @@
                     <svg id="mic-icon" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-yellow-950"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
                 </button>
                 <p id="mic-hint-text" class="text-yellow-800 text-xs sm:text-sm font-bold bg-white px-4 py-1.5 rounded-full shadow-sm">마이크를 누르고 말해봐요!</p>
-                <button onclick="mockSuccess()" class="mt-1 text-[10px] font-bold text-yellow-400 hover:text-yellow-600 bg-white px-2 py-0.5 rounded-full border border-yellow-100">(디버그) 95점 테스트 🪄</button>
             </div>
         </div>
 
@@ -368,6 +367,11 @@
                 삐약삐약! 완벽해!
             </div>
         </div>
+
+        <!-- 앱 하단 저작권 푸터 -->
+        <footer class="w-full text-center py-2 bg-yellow-50/80 border-t border-yellow-100 text-[10px] text-yellow-700 font-medium shrink-0">
+            Copyright © 2026 ginachoo. All rights reserved.
+        </footer>
 
     </div>
 
@@ -523,6 +527,8 @@
         let currentAccScore = 0;
         let lastRecognizedText = '';
         let mediaStream = null;
+        let recordingStartTime = 0;
+        let manualStop = false;
 
         function checkAudioUnlock() {
             if (!audioUnlocked) {
@@ -907,6 +913,8 @@
         function startRecording() {
             const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
             lastRecognizedText = '';
+            recordingStartTime = Date.now();
+            manualStop = false;
 
             stopRecording(false);
 
@@ -943,6 +951,7 @@
 
                 recognition.onstart = () => {
                     isRecording = true;
+                    recordingStartTime = Date.now();
                     setMicBtnUI(true);
                     setFeedback('듣고 있어요! 다 말한 뒤 마이크를 다시 누르세요 🎤', 'info');
                 };
@@ -969,8 +978,13 @@
                 };
 
                 recognition.onend = () => {
-                    if (isRecording) {
+                    // 녹음 시작 후 1초 미만에서 일어난 자동 종료는 브라우저 연결 초기화로 보고 0% 팝업 생성을 방지
+                    const duration = Date.now() - recordingStartTime;
+                    if (isRecording && (manualStop || duration >= 1000)) {
                         stopRecording(true);
+                    } else if (isRecording && duration < 1000) {
+                        // 초기화 오류 시 재연결 시도
+                        try { recognition.start(); } catch(err){}
                     }
                 };
 
@@ -984,6 +998,7 @@
 
         function stopRecording(shouldAnalyze = true) {
             const wasRecording = isRecording;
+            manualStop = true;
             isRecording = false;
 
             if (recognition) {
@@ -1086,10 +1101,6 @@
             } else {
                 finishSession();
             }
-        }
-
-        function mockSuccess() { 
-            showAccuracyModal(sessionWords[currentIndex].text, 95);
         }
 
         function exitPractice() { 
