@@ -324,7 +324,8 @@
         </div>
 
         <!-- 6. 본 훈련 화면 -->
-        <div id="view-practice-main" class="view-section p-6 h-full relative bg-yellow-50 flex flex-col justify-between border-4 border-white rounded-[2rem] m-2 shadow-inner">
+    <!-- 본 훈련 화면 -->
+    <div id="view-practice-main" class="view-section p-6 h-full relative bg-yellow-50 flex flex-col justify-between border-4 border-white rounded-[2rem] m-2 shadow-inner">
             <div class="flex justify-between items-center mb-2 shrink-0">
                 <div id="practice-progress" class="bg-white px-4 py-1.5 rounded-full text-sm font-black text-orange-500 shadow-sm border-2 border-yellow-200">
                     도전! 1 / 5
@@ -357,11 +358,12 @@
             </div>
             
             <div class="flex flex-col gap-2 pb-2 items-center shrink-0">
-                <button id="mic-btn" onclick="toggleRecording()" class="w-20 h-20 sm:w-24 sm:h-24 rounded-full flex items-center justify-center shadow-xl transition-all duration-300 border-4 border-white bg-yellow-400 hover:bg-yellow-500 active:scale-95">
-                    <svg id="mic-icon" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-yellow-950"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
-                </button>
-                <p id="mic-hint-text" class="text-yellow-800 text-xs sm:text-sm font-bold bg-white px-4 py-1.5 rounded-full shadow-sm">마이크를 누르고 말해봐요!</p>
-            </div>
+            <button id="mic-btn" onclick="toggleRecording()" class="w-20 h-20 sm:w-24 sm:h-24 rounded-full flex items-center justify-center shadow-xl transition-all duration-300 border-4 border-white bg-yellow-400 hover:bg-yellow-500 active:scale-95">
+                <svg id="mic-icon" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-yellow-950"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+            </button>
+            <p id="mic-hint-text" class="text-yellow-800 text-xs sm:text-sm font-bold bg-white px-4 py-1.5 rounded-full shadow-sm">마이크를 누르고 말해봐요!</p>
+        </div>
+    </div>
         </div>
 
         <!-- 7. 선생님 대시보드 페이지 -->
@@ -1074,14 +1076,7 @@
         }
 
         function openMicPermModal() {
-            document.getElementById('mic-perm-modal').classList.remove('hidden');
-        }
-
-        function closeMicPermModal() {
-            document.getElementById('mic-perm-modal').classList.add('hidden');
-        }
-
-        // --- [음성인식 모바일 완벽 대응 토글] ---
+        // --- [음성인식 모바일 (Galaxy/Android + iPhone/iOS) 완벽 대응] ---
         function toggleRecording() {
             if (isRecording) {
                 stopRecording(true);
@@ -1091,25 +1086,36 @@
         }
 
         function startRecording() {
-            // iOS / Mobile Safari 합성 음성이 마이크 수신을 방해하지 않도록 완전 취소
             if (window.speechSynthesis) {
                 window.speechSynthesis.cancel();
             }
 
             const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRec) {
+                openMicPermModal();
+                setFeedback('이 브라우저는 음성 인식을 지원하지 않습니다.', 'error');
+                return;
+            }
+
             lastRecognizedText = '';
             recordingStartTime = Date.now();
             manualStop = false;
 
             stopRecording(false);
 
-            // 모바일 오디오 통로 활성화
+            // 안드로이드 / 갤럭시 디바이스 감지
+            const isAndroid = /Android/i.test(navigator.userAgent);
+
             if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
                 navigator.mediaDevices.getUserMedia({ audio: true })
                     .then(stream => {
                         mediaStream = stream;
-                        // 0.15초 딜레이를 주어 오디오 트랙 준비 시간 확보
-                        setTimeout(() => initSpeechEngine(SpeechRec), 150);
+                        if (isAndroid) {
+                            // 갤럭시(안드로이드)의 마이크 점유 충돌 방지: 스트림 권한만 확인 후 오디오 트랙 해제
+                            stream.getTracks().forEach(track => track.stop());
+                            mediaStream = null;
+                        }
+                        setTimeout(() => initSpeechEngine(SpeechRec, isAndroid), 100);
                     })
                     .catch(err => {
                         console.error("Mic Permission Denied:", err);
@@ -1117,22 +1123,19 @@
                         setFeedback('마이크 접근 권한이 필요합니다.', 'error');
                     });
             } else {
-                initSpeechEngine(SpeechRec);
+                initSpeechEngine(SpeechRec, isAndroid);
             }
         }
 
-        function initSpeechEngine(SpeechRec) {
-            if (!SpeechRec) {
-                setFeedback('이 브라우저는 음성 인식을 지원하지 않습니다.', 'error');
-                return;
-            }
-
+        function initSpeechEngine(SpeechRec, isAndroid) {
             try {
                 recognition = new SpeechRec();
                 recognition.lang = 'en-US';
                 recognition.interimResults = true;
                 recognition.maxAlternatives = 1;
-                recognition.continuous = true;
+                
+                // 안드로이드 디바이스 호환성을 위해 continuous 조정
+                recognition.continuous = !isAndroid;
 
                 recognition.onstart = () => {
                     isRecording = true;
@@ -1150,7 +1153,6 @@
                     }
                     if (currentTranscript.trim() !== '') {
                         lastRecognizedText = currentTranscript.trim();
-                        // 휴대폰 화면 하단에 실시간 들리는 영단어 표시
                         setFeedback(`들리는 중: "${lastRecognizedText}" 🎙️`, 'info');
                     }
                 };
@@ -1166,9 +1168,9 @@
 
                 recognition.onend = () => {
                     const duration = Date.now() - recordingStartTime;
-                    if (isRecording && (manualStop || duration >= 800)) {
+                    if (isRecording && (manualStop || duration >= 600 || isAndroid)) {
                         stopRecording(true);
-                    } else if (isRecording && duration < 800) {
+                    } else if (isRecording && duration < 600 && !isAndroid) {
                         try { recognition.start(); } catch(err){}
                     }
                 };
