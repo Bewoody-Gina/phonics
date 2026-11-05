@@ -712,12 +712,20 @@
 
         function playIntroSound() {
             if (!window.speechSynthesis) return;
-            window.speechSynthesis.cancel();
+            
+            // 재생 중인 소리가 있다면 취소
+            if (window.speechSynthesis.speaking) {
+                window.speechSynthesis.cancel();
+            }
             
             const uIntro = new SpeechSynthesisUtterance(`Letter ${currentLetterData.letter}. Listen to the words.`);
-            uIntro.lang = 'en-US'; uIntro.rate = 0.7;
+            uIntro.lang = 'en-US'; 
+            uIntro.rate = 0.7;
             uIntro.onstart = () => updateIntroHighlight(-1);
-            uIntro.onend = () => playWordWithDelay(0);
+            
+            uIntro.onend = () => {
+                playWordWithDelay(0);
+            };
 
             const playWordWithDelay = (idx) => {
                 if(idx >= sessionWords.length) {
@@ -725,11 +733,17 @@
                     return;
                 }
                 const uWord = new SpeechSynthesisUtterance(sessionWords[idx].text);
-                uWord.lang = 'en-US'; uWord.rate = 0.55;
+                uWord.lang = 'en-US'; 
+                uWord.rate = 0.55;
                 uWord.onstart = () => updateIntroHighlight(idx);
-                uWord.onend = () => { setTimeout(() => playWordWithDelay(idx + 1), 1200); };
+                uWord.onend = () => { 
+                    setTimeout(() => playWordWithDelay(idx + 1), 1200); 
+                };
+                
                 window.speechSynthesis.speak(uWord);
             }
+            
+            // 모바일 버그 수정을 위해 지연(setTimeout) 없이 즉시 실행
             window.speechSynthesis.speak(uIntro);
         }
 
@@ -778,12 +792,17 @@
 
         function playCurrentWord() {
             if (!window.speechSynthesis) return;
-            if (window.speechSynthesis.speaking) window.speechSynthesis.cancel();
-            setTimeout(() => {
-                const uWord = new SpeechSynthesisUtterance(sessionWords[currentIndex].text);
-                uWord.lang = 'en-US'; uWord.rate = 0.7;
-                window.speechSynthesis.speak(uWord);
-            }, 10);
+            
+            if (window.speechSynthesis.speaking) {
+                window.speechSynthesis.cancel();
+            }
+            
+            const uWord = new SpeechSynthesisUtterance(sessionWords[currentIndex].text);
+            uWord.lang = 'en-US'; 
+            uWord.rate = 0.7;
+            
+            // 모바일 버그 수정을 위해 지연 없이 즉시 실행
+            window.speechSynthesis.speak(uWord);
         }
 
         function setFeedback(msg, type) {
@@ -803,22 +822,35 @@
                 setFeedback('마이크 지원 불가! 크롬이나 사파리를 사용해주세요.', 'error');
                 return;
             }
-            if(recognition) { try { recognition.abort(); } catch(e){} }
+            if(recognition) { 
+                try { recognition.abort(); } catch(e){} 
+            }
             
             recognition = new SpeechRec();
             recognition.lang = 'en-US';
             recognition.interimResults = false;
             recognition.maxAlternatives = 1;
+            recognition.continuous = false; // 계속 듣기 방지
 
             recognition.onstart = () => {
                 isRecording = true;
-                document.getElementById('mic-btn').classList.add('bg-rose-500', 'mic-recording', 'scale-110');
-                document.getElementById('mic-btn').classList.remove('bg-yellow-400', 'hover:bg-yellow-500');
-                document.getElementById('mic-icon').classList.replace('text-yellow-950', 'text-white');
+                const btn = document.getElementById('mic-btn');
+                const icon = document.getElementById('mic-icon');
+                if(btn) {
+                    btn.classList.add('bg-rose-500', 'mic-recording', 'scale-110');
+                    btn.classList.remove('bg-yellow-400', 'hover:bg-yellow-500');
+                }
+                if(icon) icon.classList.replace('text-yellow-950', 'text-white');
                 setFeedback('마이크 켜짐! 예쁘게 말해볼까요? 🎤', '');
             };
 
+            // 말을 멈추면 자동으로 인식을 종료하도록 추가
+            recognition.onspeechend = () => {
+                try { recognition.stop(); } catch(e) {}
+            };
+
             recognition.onresult = (event) => {
+                if (!event.results || !event.results[0]) return;
                 const speechResult = event.results[0][0].transcript;
                 const targetWord = sessionWords[currentIndex].text;
                 const accuracy = calculateAccuracy(speechResult, targetWord);
@@ -838,26 +870,42 @@
                 if (e.error === 'not-allowed') setFeedback('마이크 차단됨! (주소창 🔒 자물쇠 확인)', 'error');
                 else if (e.error === 'no-speech') setFeedback('소리가 안 들려요. 다시 해볼까? 😢', 'error');
                 else setFeedback(`인식 오류(${e.error}). 다시 해볼까?`, 'error');
+                resetMicUI();
             };
 
             recognition.onend = () => {
-                isRecording = false;
-                document.getElementById('mic-btn').classList.remove('bg-rose-500', 'mic-recording', 'scale-110');
-                document.getElementById('mic-btn').classList.add('bg-yellow-400', 'hover:bg-yellow-500');
-                document.getElementById('mic-icon').classList.replace('text-white', 'text-yellow-950');
+                resetMicUI();
             };
 
-            try { recognition.start(); } catch(e) { console.error(e); }
+            try { recognition.start(); } catch(e) { console.error(e); resetMicUI(); }
+        }
+
+        function resetMicUI() {
+            isRecording = false;
+            const btn = document.getElementById('mic-btn');
+            const icon = document.getElementById('mic-icon');
+            if(btn) {
+                btn.classList.remove('bg-rose-500', 'mic-recording', 'scale-110');
+                btn.classList.add('bg-yellow-400', 'hover:bg-yellow-500');
+            }
+            if(icon) {
+                icon.classList.replace('text-white', 'text-yellow-950');
+            }
         }
 
         function handleScore(score) {
             sessionScores[currentIndex] = score;
-            document.getElementById('mic-btn').disabled = true;
-            document.getElementById('mic-btn').classList.add('opacity-50');
+            const btn = document.getElementById('mic-btn');
+            if(btn) {
+                btn.disabled = true;
+                btn.classList.add('opacity-50');
+            }
 
             setTimeout(() => {
-                document.getElementById('mic-btn').disabled = false;
-                document.getElementById('mic-btn').classList.remove('opacity-50');
+                if(btn) {
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-50');
+                }
                 
                 if (currentIndex < sessionWords.length - 1) {
                     currentIndex++;
