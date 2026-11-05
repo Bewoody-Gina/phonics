@@ -94,7 +94,6 @@
                 <button id="tab-teacher" onclick="switchLoginTab('teacher')" class="flex-1 py-3 rounded-xl text-sm font-bold transition-all duration-300 text-yellow-600 hover:text-orange-500">선생님 (Teacher)</button>
             </div>
 
-            <!-- 새로고침 방지를 위해 onsubmit 수정 및 button type 변경 -->
             <form id="login-form" onsubmit="handleLogin(event); return false;" class="space-y-4 max-w-sm mx-auto w-full relative z-10 mb-auto">
                 <div id="student-inputs" class="space-y-4">
                     <input type="text" id="login-id" placeholder="학번 (예: 20401)" class="w-full p-4 bg-yellow-50/50 border-2 border-yellow-200 rounded-2xl text-base font-medium focus:outline-none focus:border-orange-400 focus:bg-white transition-all placeholder-yellow-400" />
@@ -812,16 +811,19 @@
                 return;
             }
             el.textContent = msg;
-            el.className = `text-sm sm:text-base font-bold px-5 py-2.5 rounded-full shadow-md ${type === 'success' ? 'bg-orange-500 text-white' : 'bg-rose-400 text-white'}`;
+            el.className = `text-sm sm:text-base font-bold px-5 py-2.5 rounded-full shadow-md ${type === 'success' ? 'bg-orange-500 text-white' : type === 'error' ? 'bg-rose-400 text-white' : 'bg-yellow-400 text-yellow-950'}`;
             el.classList.remove('hidden');
         }
 
+        // --- 마이크 기능 핵심 로직 수정 ---
         function startRecording() {
             const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
             if (!SpeechRec) {
-                setFeedback('마이크 지원 불가! 크롬이나 사파리를 사용해주세요.', 'error');
+                setFeedback('마이크 지원 불가! 크롬이나 사파리 앱을 사용해주세요.', 'error');
                 return;
             }
+            
+            // 기존 인식기가 동작 중이면 안전하게 정리
             if(recognition) { 
                 try { recognition.abort(); } catch(e){} 
             }
@@ -830,7 +832,7 @@
             recognition.lang = 'en-US';
             recognition.interimResults = false;
             recognition.maxAlternatives = 1;
-            recognition.continuous = false; // 계속 듣기 방지
+            recognition.continuous = false; // 계속 듣기 방지 (말을 한 번 끝내면 브라우저가 자동 종료함)
 
             recognition.onstart = () => {
                 isRecording = true;
@@ -841,13 +843,12 @@
                     btn.classList.remove('bg-yellow-400', 'hover:bg-yellow-500');
                 }
                 if(icon) icon.classList.replace('text-yellow-950', 'text-white');
-                setFeedback('마이크 켜짐! 예쁘게 말해볼까요? 🎤', '');
+                setFeedback('마이크 켜짐! 예쁘게 말해볼까요? 🎤', ''); // 안내 메시지
             };
 
-            // 말을 멈추면 자동으로 인식을 종료하도록 추가
-            recognition.onspeechend = () => {
-                try { recognition.stop(); } catch(e) {}
-            };
+            // 주의: onspeechend에서 억지로 stop()을 부르면 
+            // 결과를 반환하는 onresult 이벤트가 취소(씹히는)되는 버그가 있어 코드를 제거했습니다.
+            // continuous가 false이므로 브라우저가 자동으로 침묵을 감지하고 넘겨줍니다.
 
             recognition.onresult = (event) => {
                 if (!event.results || !event.results[0]) return;
@@ -855,9 +856,10 @@
                 const targetWord = sessionWords[currentIndex].text;
                 const accuracy = calculateAccuracy(speechResult, targetWord);
                 
-                if (accuracy >= 90) {
+                // 80점 이상이면 통과하도록 완화!
+                if (accuracy >= 80) {
                     setFeedback(`최고야! ("${speechResult}" - 정확도: ${accuracy}%) ✨`, 'success');
-                    handleScore(accuracy);
+                    handleScore(accuracy); // 통과하면 다음 단어로 넘어감
                 } else if (accuracy >= 50) {
                     setFeedback(`조금만 더! ("${speechResult}" - 정확도: ${accuracy}%) 🐣`, 'error');
                 } else {
@@ -867,17 +869,23 @@
 
             recognition.onerror = (e) => {
                 console.error("Mic error:", e);
-                if (e.error === 'not-allowed') setFeedback('마이크 차단됨! (주소창 🔒 자물쇠 확인)', 'error');
-                else if (e.error === 'no-speech') setFeedback('소리가 안 들려요. 다시 해볼까? 😢', 'error');
-                else setFeedback(`인식 오류(${e.error}). 다시 해볼까?`, 'error');
+                // 브라우저에서 마이크 차단 시 메시지 
+                if (e.error === 'not-allowed') setFeedback('마이크 차단됨! (주소창 🔒 자물쇠 확인 및 크롬/사파리 앱 사용)', 'error');
+                else if (e.error === 'no-speech') setFeedback('소리가 안 들려요. 다시 한 번 눌러볼까요? 😢', 'error');
+                else setFeedback(`인식 오류(${e.error}). 다시 눌러주세요.`, 'error');
                 resetMicUI();
             };
 
             recognition.onend = () => {
-                resetMicUI();
+                resetMicUI(); // 음성 인식이 완전히 끝나면 버튼 원상복구
             };
 
-            try { recognition.start(); } catch(e) { console.error(e); resetMicUI(); }
+            try { 
+                recognition.start(); 
+            } catch(e) { 
+                console.error("Mic start failed", e); 
+                resetMicUI(); 
+            }
         }
 
         function resetMicUI() {
@@ -913,7 +921,7 @@
                 } else {
                     finishSession();
                 }
-            }, 1500);
+            }, 1500); // 결과 확인을 위해 1.5초 후 이동
         }
 
         function mockSuccess() { handleScore(100); }
@@ -922,14 +930,17 @@
         function finishSession() {
             const total = sessionScores.reduce((a, b) => a + b, 0);
             const avg = total / sessionWords.length;
-            const passed = avg >= 90;
+            const passed = avg >= 80; // 전체 평균 80점 이상 시 뱃지 획득!
 
             const newLog = { date: new Date().toLocaleDateString(), letter: currentLetterData.letter, position: currentTargetPosition, score: Math.round(avg), passed };
             currentUser.logs.unshift(newLog);
 
+            // 뱃지 부여 로직
             if (passed && !currentUser.badges.includes(currentLetterData.letter)) {
                 currentUser.badges.push(currentLetterData.letter);
             }
+            
+            // 데이터베이스(LocalStorage)에 확실히 업데이트!
             users[currentUser.id] = currentUser;
             saveUsers();
 
@@ -943,7 +954,7 @@
                     showPracticeSelector();
                 }, 3000);
             } else {
-                showToast(`연습 끝! 내 점수는: ${Math.round(avg)}점! 다음에 다시 도전해볼까? 🐥`, 'info');
+                showToast(`연습 끝! 내 점수는: ${Math.round(avg)}점! 평균 80점을 넘겨서 뱃지를 받아볼까요? 🐥`, 'info');
                 showPracticeSelector();
             }
         }
