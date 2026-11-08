@@ -260,7 +260,6 @@
                     <svg id="mic-icon" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-yellow-950"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
                 </button>
                 <p class="text-yellow-700 text-sm font-bold bg-white px-4 py-1.5 rounded-full shadow-sm mt-1">마이크를 누르고 말해봐요!</p>
-                <button onclick="mockSuccess()" class="mt-2 text-[10px] font-bold text-yellow-400 hover:text-yellow-600 bg-white px-2 py-1 rounded-full border border-yellow-100">(디버그) 정답 처리 🪄</button>
             </div>
         </div>
 
@@ -822,17 +821,21 @@
                 setFeedback('마이크 지원 불가! 크롬이나 사파리 앱을 사용해주세요.', 'error');
                 return;
             }
-            
-            // 기존 인식기가 동작 중이면 안전하게 정리
-            if(recognition) { 
-                try { recognition.abort(); } catch(e){} 
+
+            // 이미 녹음 중이면 한 번 더 눌렀을 때 중지되도록 처리
+            if (isRecording && recognition) {
+                try { recognition.stop(); } catch(e){}
+                return;
             }
             
-            recognition = new SpeechRec();
-            recognition.lang = 'en-US';
-            recognition.interimResults = false;
-            recognition.maxAlternatives = 1;
-            recognition.continuous = false; // 계속 듣기 방지 (말을 한 번 끝내면 브라우저가 자동 종료함)
+            // 매번 새로운 인식기를 생성하지 않고 하나를 재사용하여 권한 팝업 반복 방지
+            if (!recognition) {
+                recognition = new SpeechRec();
+                recognition.lang = 'en-US';
+                recognition.interimResults = false;
+                recognition.maxAlternatives = 1;
+                recognition.continuous = false; // 계속 듣기 방지
+            }
 
             recognition.onstart = () => {
                 isRecording = true;
@@ -846,9 +849,10 @@
                 setFeedback('마이크 켜짐! 예쁘게 말해볼까요? 🎤', ''); // 안내 메시지
             };
 
-            // 주의: onspeechend에서 억지로 stop()을 부르면 
-            // 결과를 반환하는 onresult 이벤트가 취소(씹히는)되는 버그가 있어 코드를 제거했습니다.
-            // continuous가 false이므로 브라우저가 자동으로 침묵을 감지하고 넘겨줍니다.
+            // 1 & 2: 말이 끝나면 자동으로 인식을 중단하여 빠르게 결과를 평가함
+            recognition.onspeechend = () => {
+                try { recognition.stop(); } catch(e) {}
+            };
 
             recognition.onresult = (event) => {
                 if (!event.results || !event.results[0]) return;
@@ -856,22 +860,24 @@
                 const targetWord = sessionWords[currentIndex].text;
                 const accuracy = calculateAccuracy(speechResult, targetWord);
                 
-                // 80점 이상이면 통과하도록 완화!
+                // 3: 80점 이상일 때만 다음으로 넘어감
                 if (accuracy >= 80) {
                     setFeedback(`최고야! ("${speechResult}" - 정확도: ${accuracy}%) ✨`, 'success');
-                    handleScore(accuracy); // 통과하면 다음 단어로 넘어감
+                    handleScore(accuracy); // 80점 이상일 때만 다음 단어로 진행
                 } else if (accuracy >= 50) {
                     setFeedback(`조금만 더! ("${speechResult}" - 정확도: ${accuracy}%) 🐣`, 'error');
+                    // 80점 미만이면 다음으로 넘어가지 않음 (다시 시도)
                 } else {
-                    setFeedback(`다시 한 번! ("${speechResult}" - 정확도: ${accuracy}%) 🐤`, 'error');
+                    setFeedback(`다시 한 번 해볼까? ("${speechResult}" - 정확도: ${accuracy}%) 🐤`, 'error');
+                    // 80점 미만이면 다음으로 넘어가지 않음 (다시 시도)
                 }
             };
 
             recognition.onerror = (e) => {
                 console.error("Mic error:", e);
                 // 브라우저에서 마이크 차단 시 메시지 
-                if (e.error === 'not-allowed') setFeedback('마이크 차단됨! (주소창 🔒 자물쇠 확인 및 크롬/사파리 앱 사용)', 'error');
-                else if (e.error === 'no-speech') setFeedback('소리가 안 들려요. 다시 한 번 눌러볼까요? 😢', 'error');
+                if (e.error === 'not-allowed') setFeedback('마이크 권한이 없어요! 설정에서 허용해주세요.', 'error');
+                else if (e.error === 'no-speech') setFeedback('소리가 안 들려요. 마이크를 다시 눌러볼까요? 😢', 'error');
                 else setFeedback(`인식 오류(${e.error}). 다시 눌러주세요.`, 'error');
                 resetMicUI();
             };
@@ -884,6 +890,7 @@
                 recognition.start(); 
             } catch(e) { 
                 console.error("Mic start failed", e); 
+                try { recognition.abort(); } catch(err){}
                 resetMicUI(); 
             }
         }
@@ -924,18 +931,17 @@
             }, 1500); // 결과 확인을 위해 1.5초 후 이동
         }
 
-        function mockSuccess() { handleScore(100); }
         function exitPractice() { showPracticeSelector(); } 
 
         function finishSession() {
             const total = sessionScores.reduce((a, b) => a + b, 0);
-            const avg = total / sessionWords.length;
+            const avg = sessionWords.length > 0 ? total / sessionWords.length : 0;
             const passed = avg >= 80; // 전체 평균 80점 이상 시 뱃지 획득!
 
             const newLog = { date: new Date().toLocaleDateString(), letter: currentLetterData.letter, position: currentTargetPosition, score: Math.round(avg), passed };
             currentUser.logs.unshift(newLog);
 
-            // 뱃지 부여 로직
+            // 뱃지 부여 로직 (중복으로 추가되는 현상 방지)
             if (passed && !currentUser.badges.includes(currentLetterData.letter)) {
                 currentUser.badges.push(currentLetterData.letter);
             }
