@@ -156,6 +156,19 @@ const DATA={v:[],c:[]};
 for(const k of['v','c'])RAW[k].split('\n').forEach(l=>{const p=l.split('|');const o={letter:p[0],words:[]};
  for(let i=1;i<p.length;i+=2)p[i+1].split(',').forEach(s=>{const m=s.match(/^([A-Za-z-]+)(\D*?)([가-힣].*)$/);if(m)o.words.push({t:m[1],icon:m[2],m:m[3],pos:POS[p[i]]})});DATA[k].push(o)});
 const ALL=[...DATA.v,...DATA.c].map(d=>d.letter);
+
+// 브라우저 소리 엔진 강제 깨우기 (첫 터치 시 무음 재생)
+let engineAwake = false;
+function wakeUpEngine() {
+    if (engineAwake || !window.speechSynthesis) return;
+    engineAwake = true;
+    const u = new SpeechSynthesisUtterance('');
+    u.volume = 0;
+    speechSynthesis.speak(u);
+}
+document.addEventListener('click', wakeUpEngine, {once:true});
+document.addEventListener('touchstart', wakeUpEngine, {once:true});
+
 // 선생님 비밀번호는 SHA-256 해시로만 저장 (평문 없음)
 const TH='d464c8588a9bae97bb0ab967b4e8170e9f72490c396921f8dd82bc525eadcff2',SALT='bbiyak';
 const $=id=>document.getElementById(id);
@@ -196,20 +209,34 @@ function showPos(d){cur=d;$('pl').textContent=d.letter;const b=$('pb');b.innerHT
 function intro(){$('il').textContent=cur.letter;$('iw').innerHTML=words.map((w,i)=>`<div class="w" id="iw${i}"><i>${w.icon}</i><b>${w.t}</b><div style="font-size:13px">${w.m}</div></div>`).join('');view('intro')}
 let voices=[];function loadVoices(){try{voices=speechSynthesis.getVoices()}catch(e){}}
 if(window.speechSynthesis){loadVoices();speechSynthesis.onvoiceschanged=loadVoices}
+
+// TTS 즉시 동기화 실행 (setTimeout 제거)
 function speak(t,rate=.7,cb){
  if(!window.speechSynthesis){toast('이 기기는 소리 읽기를 지원하지 않아요 😢');return cb&&cb()}
- const ss=speechSynthesis;try{ss.cancel()}catch(e){}
- setTimeout(()=>{const u=new SpeechSynthesisUtterance(t);u.lang='en-US';u.rate=rate;
-  const v=voices.find(v=>/^en[-_]US/i.test(v.lang))||voices.find(v=>/^en/i.test(v.lang));if(v)u.voice=v;
-  let called=false;const fin=()=>{if(!called){called=true;cb&&cb()}};u.onend=fin;u.onerror=fin;
-  try{ss.resume()}catch(e){}ss.speak(u);if(cb)setTimeout(fin,7000)},80)}
+ const ss=window.speechSynthesis;
+ try{ss.cancel(); ss.resume();}catch(e){} // 이전 소리 강제 정리
+ const u=new SpeechSynthesisUtterance(t);
+ u.lang='en-US';u.rate=rate;
+ if(!voices.length) loadVoices();
+ const v=voices.find(v=>/^en[-_]US/i.test(v.lang))||voices.find(v=>/^en/i.test(v.lang));
+ if(v)u.voice=v;
+ 
+ let called=false;
+ const fin=()=>{if(!called){called=true;cb&&cb()}};
+ u.onend=fin;
+ u.onerror=fin;
+ 
+ ss.speak(u);
+ if(cb)setTimeout(fin,7000); // 7초 이상 멈춰있을 경우 대비 안전장치
+}
+
 function hl(n){words.forEach((_,i)=>{const e=$('iw'+i);if(e)e.className='w'+(i==n?' hl':'')})}
 function playIntro(){let i=0;const nx=()=>{if(i>=words.length)return setTimeout(()=>hl(-1),800);hl(i);const w=words[i++].t;speak(w,.6,()=>setTimeout(nx,900))};speak('Letter '+cur.letter,.7,nx)}
 function startPractice(){ensureMic();idx=0;scores=[];view('prac');ui()}
 function ui(){const w=words[idx];$('pp').textContent=`도전! ${idx+1} / ${words.length}`;$('ppos').textContent=`${cur.letter}가 '${w.pos}'에 있어요 💡`;$('pi').textContent=w.icon;$('pw').textContent=w.t;$('pm').textContent=w.m;fb('마이크를 누르고 또렷하게 말해요!','info')}
 function fb(m,t){const e=$('fb');e.textContent=m;e.className='fb '+t}
 
-// ---- 향상된 음성 인식 (Auto-Mic 탑재) ----
+// ---- 향상된 음성 인식 (Auto-Mic 탑재 및 연결 안정성 강화) ----
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
 let rec=null,recOn=false,gotResult=false,timer=null,micOK=false,autoMic=false;
 
@@ -235,15 +262,15 @@ async function ensureMic(){
  }
 }
 
-// 음성 인식 객체를 최초 한 번만 생성하여 브라우저의 권한 반복 요청 방지
+// 음성 인식 객체를 항상 새로 생성하여 브라우저 엔진 멈춤/연결 끊김 완벽 방지
 function initMic(){
- if(rec) return;
  if(!SR) return;
+ // 인스턴스를 매번 새로 만들어 이전 버그나 쓰레기 데이터를 초기화합니다.
  rec=new SR();
  rec.lang='en-US';
  rec.interimResults=true;
- rec.maxAlternatives=10;
- rec.continuous=false; // 각 단어마다 끊어서 판단하기 위해 false 사용
+ rec.maxAlternatives=1;
+ rec.continuous=false; 
 
  rec.onstart=()=>{
   recOn=true;
@@ -267,10 +294,10 @@ function initMic(){
  };
 
  rec.onerror=e=>{
-  const m={'not-allowed':'마이크가 막혀 있어요. 주소창 🔒에서 마이크를 허용해주세요.','service-not-allowed':'이 화면에서는 음성 인식이 막혀 있어요. 새 탭에서 열어 주세요.','no-speech':'소리가 안 들렸어요. 다시 해볼까요? 😢','audio-capture':'마이크를 찾을 수 없어요.','network':'인터넷 연결을 확인해 주세요.'};
+  const m={'not-allowed':'마이크 권한을 허용해주세요 (주소창 자물쇠 🔒 클릭)','service-not-allowed':'마이크가 막혀 있어요. 새 창에서 열어주세요.','no-speech':'소리가 안 들렸어요. 다시 해볼까요? 😢','audio-capture':'마이크를 찾을 수 없어요.','network':'인터넷 연결을 확인해 주세요.'};
   if(e.error!='aborted'){
    fb(m[e.error]||'인식 오류('+e.error+'). 다시 눌러 주세요.','no');
-   autoMic=false; // 에러가 나면 다음 단어에서 마이크 자동 켜기 취소
+   autoMic=false; // 에러가 나면 자동 켜기 취소
   }
  };
 
@@ -279,21 +306,21 @@ function initMic(){
   resetMic();
   if(!had&&!$('fb').className.includes('no')&&!$('fb').className.includes('ok')){
    fb('잘 못 들었어요. 다시 눌러서 말해 볼까요? 🐣','no');
-   autoMic=false; // 타임아웃 등으로 실패하면 자동 켜기 취소
+   autoMic=false;
   }
  };
 }
 
 async function toggleMic(){
  if(recOn){stopMic(true); autoMic=false; return} // 작동 중 누르면 수동 정지
- if(!SR){fb('이 브라우저는 음성 인식이 안 돼요. 크롬(안드로이드)·사파리(iOS) 앱을 써 주세요.','no'); return}
+ if(!SR){fb('음성 인식을 지원하지 않는 브라우저입니다. 크롬/사파리 앱을 열어주세요.','no'); return}
  
  const ok=await ensureMic();
  if(!ok) return;
 
  try{speechSynthesis.cancel()}catch(e){}
  
- initMic();
+ initMic(); // 켤 때마다 항상 안전하게 새로 연결
  gotResult=false;
  autoMic=true; // 버튼을 눌러서 시작했다면, 다음 단어부터는 자동으로 켜지도록 설정
  
@@ -335,6 +362,7 @@ function nextWord(sc){
    setTimeout(()=>{
     if(!recOn) {
      gotResult=false;
+     initMic(); // 다음 단어에서도 항상 새로 연결
      try{rec.start()}catch(e){}
     }
    }, 800);
