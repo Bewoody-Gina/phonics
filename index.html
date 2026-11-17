@@ -113,8 +113,253 @@ input:focus{outline:none;border-color:var(--pink)}
   </div>
   <div id="fb" class="fb info">마이크를 누르고 또렷하게 말해요!</div>
   <button id="mic" class="mic" onclick="toggleMic()">🎤</button>
-  <div class="row" style="justify-content:center"><button class="btn sm alt" id="skip" style="display:none" onclick="nextWord(0)">건너뛰기 ➡</button></div>
 </section>
 
 <section id="v-teacher" class="view">
-  <div
+  <div class="row"><h2>선생님 화면 👩‍🏫</h2><button class="btn sm alt" onclick="logout()">로그아웃</button></div>
+  <div class="grid" style="grid-template-columns:1fr 1fr"><div class="card"><div>등록 학생</div><b id="tsc" style="font-size:30px;color:var(--accent)">0</b></div><div class="card"><div>총 연습</div><b id="tlc" style="font-size:30px;color:var(--accent)">0</b></div></div>
+  <div class="chip" id="tsrc" style="align-self:flex-start"></div>
+  <div id="tl" class="card" style="padding:4px;text-align:left"></div>
+</section>
+</div></div>
+
+<script>
+// 데이터: 글자|위치|단어 아이콘 뜻 ... (위치 처/중/끝)
+const RAW={v:`A|처|Apple🍎사과,Ant🐜개미,Arm💪팔|중|Cat🐱고양이,Cake🍰케이크,Ball🏀공|끝|Banana🍌바나나,Panda🐼판다,Pizza🍕피자
+E|처|Egg🥚계란,Eagle🦅독수리,Ear👂귀|중|Pen🖊️펜,Bed🛏️침대,Desk🪑책상|끝|House🏠집,Horse🐴말,Rose🌹장미
+I|처|Ice🧊얼음,Igloo🛖이글루,Island🏝️섬|중|Pig🐷돼지,Fish🐟물고기,Milk🥛우유|끝|Taxi🚕택시,Kiwi🥝키위,Sushi🍣초밥
+O|처|Owl🦉올빼미,Orange🍊오렌지,Ocean🌊바다|중|Dog🐶개,Frog🐸개구리,Moon🌕달|끝|Hippo🦛하마,Tomato🍅토마토,Potato🥔감자
+U|처|Umbrella☂️우산,Unicorn🦄유니콘,Up⬆️위로|중|Cup☕컵,Sun☀️태양,Duck🦆오리|끝|Menu📜메뉴,Glue🧴풀,Statue🗽동상`,
+c:`B|처|Bear🐻곰,Bus🚌버스,Book📖책|중|Rabbit🐰토끼,Robot🤖로봇,Ribbon🎀리본|끝|Web🕸️거미줄,Crab🦀게,Tub🛁욕조
+C|처|Cat🐱고양이,Car🚗자동차,Cup☕컵|중|Soccer⚽축구,Rocket🚀로켓,Doctor🩺의사|끝|Music🎵음악,Magic🪄마술,Picnic🍱소풍
+D|처|Dog🐶개,Duck🦆오리,Door🚪문|중|Spider🕷️거미,Window🪟창문,Candy🍬사탕|끝|Bed🛏️침대,Bird🐦새,Hand✋손
+F|처|Fish🐟물고기,Fox🦊여우,Fire🔥불|중|Muffin🧁머핀,Coffee☕커피,Waffle🧇와플|끝|Leaf🍃나뭇잎,Wolf🐺늑대,Chef🧑‍🍳요리사
+G|처|Goat🐐염소,Game🎮게임,Gift🎁선물|중|Tiger🐯호랑이,Dragon🐉용,Burger🍔햄버거|끝|Pig🐷돼지,Frog🐸개구리,Bag👜가방
+H|처|Hat🎩모자,House🏠집,Horse🐴말|중|Beehive🐝벌집,Rehab🏥재활,Behave😇행동하다
+J|처|Jam🍯잼,Juice🥤주스,Jet✈️제트기|중|Ninja🥷닌자,Pajamas👘파자마,Project📋프로젝트
+K|처|Key🔑열쇠,Kite🪁연,King👑왕|중|Monkey🐒원숭이,Rocket🚀로켓,Cookie🍪쿠키|끝|Book📖책,Duck🦆오리,Sock🧦양말
+L|처|Lion🦁사자,Lemon🍋레몬,Lamp💡램프|중|Melon🍈멜론,Balloon🎈풍선,Color🎨색깔|끝|Ball🏀공,Snail🐌달팽이,Girl👧소녀
+M|처|Monkey🐒원숭이,Moon🌕달,Map🗺️지도|중|Lemon🍋레몬,Camel🐫낙타,Hammer🔨망치|끝|Jam🍯잼,Drum🥁북,Farm🚜농장
+N|처|Nest🪹둥지,Nose👃코,Nine9️⃣아홉|중|Snail🐌달팽이,Banana🍌바나나,Window🪟창문|끝|Sun☀️태양,Pen🖊️펜,Train🚂기차
+P|처|Pig🐷돼지,Panda🐼판다,Pizza🍕피자|중|Apple🍎사과,Spider🕷️거미,Hippo🦛하마|끝|Cup☕컵,Ship🚢배,Soup🍲수프
+Q|처|Queen👑여왕,Quilt🛏️이불,Quiz📝퀴즈|중|Squirrel🐿️다람쥐,Square🔲네모,Liquid🫗액체
+R|처|Rabbit🐰토끼,Rose🌹장미,Robot🤖로봇|중|Turtle🐢거북이,Carrot🥕당근,Mirror🪞거울|끝|Car🚗자동차,Star⭐별,Door🚪문
+S|처|Sun☀️태양,Snake🐍뱀,Star⭐별|중|Desk🪑책상,Castle🏰성,Basket🧺바구니|끝|Bus🚌버스,Dress👗드레스,Glass🥛유리잔
+T|처|Tiger🐯호랑이,Tree🌲나무,Train🚂기차|중|Water💧물,Turtle🐢거북이,Guitar🎸기타|끝|Cat🐱고양이,Hat🎩모자,Boat🛥️보트
+V|처|Van🚐밴,Violin🎻바이올린,Vase🏺꽃병|중|River🏞️강,Glove🧤장갑,Cave🕳️동굴|끝|Love❤️사랑,Dove🕊️비둘기,Wave🌊파도
+W|처|Water💧물,Wolf🐺늑대,Window🪟창문|중|Flower🌸꽃,Towel🧣수건,Shower🚿샤워
+X|처|Xylophone🎹실로폰,X-ray🦴엑스레이,Xmas🎄크리스마스|중|Taxi🚕택시,Boxer🥊복서,Mixer🥣믹서기|끝|Box📦상자,Fox🦊여우,Six6️⃣여섯
+Y|처|Yellow🟡노란색,Yogurt🍦요거트,Yarn🧶털실|중|Crayon🖍️크레파스,Royal👑왕실의,Papaya🥭파파야|끝|Boy👦소년,Toy🧸장난감,Sky☁️하늘
+Z|처|Zebra🦓얼룩말,Zoo🦁동물원,Zero0️⃣영|중|Puzzle🧩퍼즐,Lizard🦎도마뱀,Wizard🧙마법사|끝|Buzz🐝윙윙,Jazz🎷재즈,Quiz📝퀴즈`};
+const POS={처:'처음',중:'중간',끝:'끝'};
+const DATA={v:[],c:[]};
+for(const k of['v','c'])RAW[k].split('\n').forEach(l=>{const p=l.split('|');const o={letter:p[0],words:[]};
+ for(let i=1;i<p.length;i+=2)p[i+1].split(',').forEach(s=>{const m=s.match(/^([A-Za-z-]+)(\D*?)([가-힣].*)$/);if(m)o.words.push({t:m[1],icon:m[2],m:m[3],pos:POS[p[i]]})});DATA[k].push(o)});
+const ALL=[...DATA.v,...DATA.c].map(d=>d.letter);
+// 선생님 비밀번호는 SHA-256 해시로만 저장 (평문 없음)
+const TH='d464c8588a9bae97bb0ab967b4e8170e9f72490c396921f8dd82bc525eadcff2',SALT='bbiyak';
+const $=id=>document.getElementById(id);
+let me=null,tab='s',gtype='v',cur=null,tpos=null,words=[],idx=0,scores=[],db=null,isOwner=false,local={};
+try{local=JSON.parse(localStorage.getItem('bbiyak_v2')||'{}')}catch(e){local={}}
+const saveLocal=()=>{try{localStorage.setItem('bbiyak_v2',JSON.stringify(local))}catch(e){}};
+async function sha(s){try{const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(SALT+s));return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}catch(e){return'x'+s.length+s.split('').reduce((a,c)=>a*31+c.charCodeAt(0)|0,7)}}
+// 공유 DB 연결 (가능할 때만, 안 되면 이 기기 저장소 사용)
+(async()=>{try{if(window.claude){db=await claude.use('db');const u=await claude.use('user');isOwner=!!(u&&u.isOwner())}}catch(e){db=null}})();
+async function getStu(id){let r=local[id]||null;if(db){try{const s=await db.doc('students/'+id).get();if(s.exists)r=s.data()}catch(e){}}return r}
+async function putStu(u){local[u.id]=u;saveLocal();if(db&&u.id!=='guest'){try{await db.doc('students/'+u.id).set(u)}catch(e){}}}
+function toast(m){const t=$('toast');t.textContent=m;t.style.display='block';clearTimeout(t._h);t._h=setTimeout(()=>t.style.display='none',3000)}
+function view(id){
+ document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));
+ $('v-'+id).classList.add('on');
+ try{speechSynthesis.cancel()}catch(e){}
+ stopMic();
+ autoMic=false; // 화면을 벗어날 때는 자동 마이크 비활성화
+}
+function loginTab(t){tab=t;$('t-s').className=t=='s'?'on':'';$('t-t').className=t=='t'?'on':'';$('s-in').style.display=t=='s'?'grid':'none';$('lpw').placeholder=t=='s'?'비밀번호':'관리자 비밀번호';$('lbtn').textContent=t=='s'?'시작하기 🐣':'관리자 로그인'}
+async function login(){
+ const pw=$('lpw').value;if(tab=='s')ensureMic();
+ if(tab=='t'){if(isOwner||await sha(pw)===TH){me={role:'teacher'};return teacher()}return toast('비밀번호가 맞지 않아요.')}
+ const id=$('lid').value.trim(),name=$('lname').value.trim();
+ if(!id||!name||!pw)return toast('모두 입력해 주세요.');
+ const h=await sha(id+pw),ex=await getStu(id);
+ if(ex){if((ex.pw||ex.password)!==h)return toast('비밀번호가 맞지 않아요.');me=ex}
+ else{me={id,name,pw:h,role:'student',badges:[],logs:[]};await putStu(me);toast('계정이 만들어졌어요! 🐣')}
+ showHome()}
+function logout(){me=null;['lid','lname','lpw'].forEach(i=>$(i).value='');view('login')}
+function showHome(){$('uname').textContent=me.name+' 학생';$('lo').textContent=me.id==='guest'?'로그인':'로그아웃';grid(gtype);view('home')}
+function grid(t){gtype=t;$('t-v').className=t=='v'?'on':'';$('t-c').className=t=='c'?'on':'';const g=$('pg');g.innerHTML='';
+ DATA[t].forEach(d=>{const e=document.createElement('div');e.className='tile'+(me.badges.includes(d.letter)?' done':'');e.innerHTML=`<b>${d.letter}</b><small>단어 ${d.words.length}개</small>`;e.onclick=()=>showPos(d);g.appendChild(e)})}
+function showBadges(){const n=me.badges.length;$('bc').textContent=n+'/26';setTimeout(()=>$('bp').style.width=Math.round(n/26*100)+'%',50);
+ $('bg').innerHTML=ALL.map(l=>`<div class="bdg ${me.badges.includes(l)?'':'off'}">${l}</div>`).join('');view('badge')}
+function showPos(d){cur=d;$('pl').textContent=d.letter;const b=$('pb');b.innerHTML='';
+ [['처음','🏁 처음에 올 때'],['중간','🔄 중간에 올 때'],['끝','🎯 끝에 올 때']].forEach(([p,l])=>{if(!d.words.some(w=>w.pos==p))return;const x=document.createElement('button');x.className='btn alt';x.textContent=l;x.onclick=()=>{tpos=p;words=d.words.filter(w=>w.pos==p);intro()};b.appendChild(x)});view('pos')}
+function intro(){$('il').textContent=cur.letter;$('iw').innerHTML=words.map((w,i)=>`<div class="w" id="iw${i}"><i>${w.icon}</i><b>${w.t}</b><div style="font-size:13px">${w.m}</div></div>`).join('');view('intro')}
+let voices=[];function loadVoices(){try{voices=speechSynthesis.getVoices()}catch(e){}}
+if(window.speechSynthesis){loadVoices();speechSynthesis.onvoiceschanged=loadVoices}
+function speak(t,rate=.7,cb){
+ if(!window.speechSynthesis){toast('이 기기는 소리 읽기를 지원하지 않아요 😢');return cb&&cb()}
+ const ss=speechSynthesis;try{ss.cancel()}catch(e){}
+ setTimeout(()=>{const u=new SpeechSynthesisUtterance(t);u.lang='en-US';u.rate=rate;
+  const v=voices.find(v=>/^en[-_]US/i.test(v.lang))||voices.find(v=>/^en/i.test(v.lang));if(v)u.voice=v;
+  let called=false;const fin=()=>{if(!called){called=true;cb&&cb()}};u.onend=fin;u.onerror=fin;
+  try{ss.resume()}catch(e){}ss.speak(u);if(cb)setTimeout(fin,7000)},80)}
+function hl(n){words.forEach((_,i)=>{const e=$('iw'+i);if(e)e.className='w'+(i==n?' hl':'')})}
+function playIntro(){let i=0;const nx=()=>{if(i>=words.length)return setTimeout(()=>hl(-1),800);hl(i);const w=words[i++].t;speak(w,.6,()=>setTimeout(nx,900))};speak('Letter '+cur.letter,.7,nx)}
+function startPractice(){ensureMic();idx=0;scores=[];view('prac');ui()}
+function ui(){const w=words[idx];$('pp').textContent=`도전! ${idx+1} / ${words.length}`;$('ppos').textContent=`${cur.letter}가 '${w.pos}'에 있어요 💡`;$('pi').textContent=w.icon;$('pw').textContent=w.t;$('pm').textContent=w.m;fb('마이크를 누르고 또렷하게 말해요!','info')}
+function fb(m,t){const e=$('fb');e.textContent=m;e.className='fb '+t}
+
+// ---- 향상된 음성 인식 (Auto-Mic 탑재) ----
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+let rec=null,recOn=false,gotResult=false,timer=null,micOK=false,autoMic=false;
+
+function norm(s){const D=['zero','one','two','three','four','five','six','seven','eight','nine'];return(s||'').toLowerCase().replace(/\d/g,d=>D[d]).replace(/[^a-z]/g,'')}
+function lev(a,b){const d=Array.from({length:a.length+1},(_,i)=>[i,...Array(b.length).fill(0)]);for(let j=1;j<=b.length;j++)d[0][j]=j;
+ for(let i=1;i<=a.length;i++)for(let j=1;j<=b.length;j++)d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]==b[j-1]?0:1));return d[a.length][b.length]}
+function score(spoken,target){const s=norm(spoken),t=norm(target);if(!s)return 0;if(s==t)return 100;
+ if(s.includes(t)||(t.length>3&&t.includes(s)&&s.length>=t.length-1))return 92;
+ const a=1-lev(s,t)/Math.max(s.length,t.length),ps=pn(s),pt=pn(t),b=ps==pt?.9:1-lev(ps,pt)/Math.max(ps.length,pt.length);
+ return Math.round(Math.max(a,b)*100)}
+function pn(s){return s.replace(/ph/g,'f').replace(/ck/g,'k').replace(/c(?![ei])/g,'k').replace(/x/g,'ks').replace(/(.)\1+/g,'$1')}
+
+async function ensureMic(){
+ if(micOK)return true;
+ try{
+  if(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia){
+   const st=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}});
+   st.getTracks().forEach(t=>t.stop())
+  }
+  micOK=true;return true
+ }catch(e){
+  fb('마이크 권한을 허용해 주세요! (주소창 🔒 → 마이크 허용)','no');return false
+ }
+}
+
+// 음성 인식 객체를 최초 한 번만 생성하여 브라우저의 권한 반복 요청 방지
+function initMic(){
+ if(rec) return;
+ if(!SR) return;
+ rec=new SR();
+ rec.lang='en-US';
+ rec.interimResults=true;
+ rec.maxAlternatives=10;
+ rec.continuous=false; // 각 단어마다 끊어서 판단하기 위해 false 사용
+
+ rec.onstart=()=>{
+  recOn=true;
+  const m=$('mic'); if(m) m.classList.add('rec');
+  fb('듣고 있어요… 말해 보세요! 🎤','info');
+  timer=setTimeout(()=>stopMic(true),7000);
+ };
+ 
+ rec.onresult=e=>{
+  const r=e.results[e.results.length-1];
+  let best=0,bestT='';
+  for(let i=0;i<r.length;i++){
+   const sc=score(r[i].transcript,words[idx].t);
+   if(sc>best){best=sc;bestT=r[i].transcript}
+  }
+  if(!r.isFinal){
+   if(best>=85){gotResult=true;judge(best,bestT);stopMic(true)}
+   return
+  }
+  gotResult=true;judge(best,bestT)
+ };
+
+ rec.onerror=e=>{
+  const m={'not-allowed':'마이크가 막혀 있어요. 주소창 🔒에서 마이크를 허용해주세요.','service-not-allowed':'이 화면에서는 음성 인식이 막혀 있어요. 새 탭에서 열어 주세요.','no-speech':'소리가 안 들렸어요. 다시 해볼까요? 😢','audio-capture':'마이크를 찾을 수 없어요.','network':'인터넷 연결을 확인해 주세요.'};
+  if(e.error!='aborted'){
+   fb(m[e.error]||'인식 오류('+e.error+'). 다시 눌러 주세요.','no');
+   autoMic=false; // 에러가 나면 다음 단어에서 마이크 자동 켜기 취소
+  }
+ };
+
+ rec.onend=()=>{
+  const had=gotResult;
+  resetMic();
+  if(!had&&!$('fb').className.includes('no')&&!$('fb').className.includes('ok')){
+   fb('잘 못 들었어요. 다시 눌러서 말해 볼까요? 🐣','no');
+   autoMic=false; // 타임아웃 등으로 실패하면 자동 켜기 취소
+  }
+ };
+}
+
+async function toggleMic(){
+ if(recOn){stopMic(true); autoMic=false; return} // 작동 중 누르면 수동 정지
+ if(!SR){fb('이 브라우저는 음성 인식이 안 돼요. 크롬(안드로이드)·사파리(iOS) 앱을 써 주세요.','no'); return}
+ 
+ const ok=await ensureMic();
+ if(!ok) return;
+
+ try{speechSynthesis.cancel()}catch(e){}
+ 
+ initMic();
+ gotResult=false;
+ autoMic=true; // 버튼을 눌러서 시작했다면, 다음 단어부터는 자동으로 켜지도록 설정
+ 
+ try{rec.start()}catch(e){resetMic();fb('다시 한 번 눌러 주세요.','no')}
+}
+
+function stopMic(soft){
+ clearTimeout(timer);
+ if(rec){try{soft?rec.stop():rec.abort()}catch(e){}}
+ if(!soft)resetMic()
+}
+
+function resetMic(){
+ recOn=false;
+ clearTimeout(timer);
+ const m=$('mic');
+ if(m)m.classList.remove('rec')
+}
+
+function judge(sc,said){
+ if(sc>=80){
+  fb(`최고야! "${said}" (${sc}점) ✨`,'ok');
+  scores[idx]=sc;
+  setTimeout(()=>nextWord(sc),1300)
+ }else{
+  fb(sc>=50?`조금만 더! "${said}"로 들렸어요 (${sc}점) 🐣`:`다시 해볼까? "${said}"로 들렸어요 🐤 먼저 🔊 듣기를 눌러 보세요`,'no');
+  autoMic=false; // 발음이 틀렸을 땐 다시 듣고 준비할 수 있게 자동마이크를 끔
+ }
+}
+
+function nextWord(sc){
+ if(scores[idx]==null)scores[idx]=sc||0;
+ if(idx<words.length-1){
+  idx++;
+  ui();
+  
+  // 성공해서 넘어왔고 자동 마이크가 켜져있다면, 약간의 지연 후 바로 시작
+  if(autoMic){
+   setTimeout(()=>{
+    if(!recOn) {
+     gotResult=false;
+     try{rec.start()}catch(e){}
+    }
+   }, 800);
+  }
+ }else finish()
+}
+
+async function finish(){
+ const avg=Math.round(scores.reduce((a,b)=>a+b,0)/words.length);
+ me.logs.unshift({date:new Date().toLocaleDateString('ko-KR'),letter:cur.letter,position:tpos,score:avg,passed:true});me.logs=me.logs.slice(0,50);
+ const isNew=!me.badges.includes(cur.letter);if(isNew)me.badges.push(cur.letter);
+ await putStu(me);
+ const all=scores.every(x=>x>=80);
+ $('conf').innerHTML=`<div style="font-size:60px">🎉🐰🐿️🎉</div><div class="bdg big2">${cur.letter}</div><div style="text-align:center;padding:0 16px">${all?'축하해요! 모든 단어를 통과했어요!':'연습 완료!'}</div><div style="font-size:20px">${isNew?'새 뱃지 획득! 🏅 ':''}평균 ${avg}점</div>`;
+ $('conf').style.display='flex';setTimeout(()=>{$('conf').style.display='none';showHome()},3500)}
+
+// ---- 선생님 ----
+async function teacher(){let list=Object.values(local);let src='이 기기에 저장된 학생';
+ if(db){try{const q=await db.collection('students').get();const m={};list.forEach(s=>m[s.id]=s);q.docs.forEach(d=>{const v=d.data();if(v)m[v.id]=v});list=Object.values(m);src='공유 DB의 모든 학생'}catch(e){}}
+ list=list.filter(s=>s.role=='student'&&s.id!=='guest');$('tsrc').textContent='🗂 '+src;$('tsc').textContent=list.length+'명';$('tlc').textContent=list.reduce((a,s)=>a+s.logs.length,0)+'건';
+ $('tl').innerHTML=list.length?list.map(s=>{const l=s.logs[0];return`<div class="srow"><b style="flex:1">${esc(s.name)}<br><small>${esc(s.id)}</small></b><span class="chip">${s.badges.length}/26</span><span style="flex:1;text-align:right">${l?`${l.passed?'🌟':'💦'} ${esc(l.letter)} ${l.score}점<br><small>${esc(l.date)}</small>`:'아직 연습 안 함'}</span><div class="bw">${s.badges.length?s.badges.map(b=>`<span class="bdg sm">${esc(b)}</span>`).join(''):'<small>뱃지 없음</small>'}</div></div>`}).join(''):'<div style="padding:30px;text-align:center">🥚 아직 학생이 없어요</div>';
+ view('teacher')}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function guest(){me=local.guest||{id:'guest',name:'친구',role:'student',badges:[],logs:[]};local.guest=me;showHome()}
+document.addEventListener('keydown',e=>{if(e.key=='Enter'&&$('v-login').classList.contains('on'))login()});
+</script>
+</body>
+</html>
